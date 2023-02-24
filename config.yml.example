@@ -1,0 +1,19 @@
+global:
+  mqtt_host: localhost
+  mqtt_port: 1883
+  mqtt_client_id: myq-teslamate-geofence
+  cooldown: 5 # minutes to wait after operating garage before checking geo_fences again
+  myq_email: myq@example.com # can also be passed as env var MYQ_EMAIL
+  myq_pass: super_secret_password # can also be passed as env var MYQ_PASS
+
+cars:
+  - teslamate_car_id: 1
+    myq_serial: myq_serial
+    garage_close_geofence:
+      geo_center: &geo_center
+        lat: 48.858195
+        lng: 2.294689
+      geo_radius: .03503 # meters
+    garage_open_geofence:
+      geo_center: *geo_center
+      geo_radius: .23138 # meters
