@@ -1,4 +1,4 @@
-module main.go
+module myq-teslamate-geofence
 
 go 1.19
 
