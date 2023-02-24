@@ -98,7 +98,6 @@ func main() {
 		car.GeoChan = make(chan mqtt.Message)
 		car.LatChan = make(chan mqtt.Message)
 		car.LngChan = make(chan mqtt.Message)
-		car.MqttChan = make(chan mqtt.Message)
 
 		if token := client.Subscribe(
 			fmt.Sprintf("teslamate/cars/%d/geofence", car.CarID),

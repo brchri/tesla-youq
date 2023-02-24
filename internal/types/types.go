@@ -23,7 +23,6 @@ type (
 		GeoChan        chan mqtt.Message
 		LatChan        chan mqtt.Message
 		LngChan        chan mqtt.Message
-		MqttChan       chan mqtt.Message
 		CurLat         float64
 		CurLng         float64
 		OpLock         bool
