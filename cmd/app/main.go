@@ -21,12 +21,15 @@ var (
 	debug      bool
 	configFile string
 	Config     t.ConfigStruct
+	GetDevices bool
 )
 
 func init() {
 	log.SetOutput(os.Stdout)
 	parseArgs()
-	loadConfig()
+	if !GetDevices {
+		loadConfig()
+	}
 	checkEnvVars()
 	for _, car := range Config.Cars {
 		car.CarAtHome = true // set default to true
@@ -39,6 +42,7 @@ func parseArgs() {
 	flag.StringVar(&configFile, "config", "", "location of config file")
 	flag.StringVar(&configFile, "c", "", "location of config file")
 	flag.BoolVar(&Config.Testing, "testing", false, "test case")
+	flag.BoolVar(&GetDevices, "d", false, "get myq devices")
 	flag.Parse()
 
 	// if -c or --config wasn't passed, check for CONFIG_FILE env var
@@ -71,6 +75,10 @@ func loadConfig() {
 }
 
 func main() {
+	if GetDevices {
+		geo.GetGarageDoorSerials(Config)
+		return
+	}
 	if value, exists := os.LookupEnv("TESTING"); exists {
 		Config.Testing, _ = strconv.ParseBool(value)
 	}
@@ -173,7 +181,7 @@ func checkEnvVars() {
 		Config.Global.MyQEmail = value
 	}
 	if value, exists := os.LookupEnv("MYQ_PASS"); exists {
-		Config.Global.MyQEmail = value
+		Config.Global.MyQPass = value
 	}
 	if Config.Global.MyQEmail == "" || Config.Global.MyQPass == "" {
 		log.Fatal("MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")

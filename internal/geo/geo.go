@@ -138,3 +138,33 @@ func setGarageDoor(config t.ConfigStruct, deviceSerial string, action string) er
 
 	return nil
 }
+
+func GetGarageDoorSerials(config t.ConfigStruct) error {
+	s := &myq.Session{}
+	s.Username = config.Global.MyQEmail
+	s.Password = config.Global.MyQPass
+
+	log.Println("Acquiring MyQ session...")
+	if err := s.Login(); err != nil {
+		log.SetOutput(os.Stderr)
+		log.Printf("ERROR: %v\n", err)
+		log.SetOutput(os.Stdout)
+		return err
+	}
+	log.Println("Session acquired...")
+
+	devices, err := s.Devices()
+	if err != nil {
+		log.Printf("Could not get devices: %v", err)
+		return err
+	}
+	for _, d := range devices {
+		log.Printf("Device Name: %v", d.Name)
+		log.Printf("Device State: %v", d.DoorState)
+		log.Printf("Device Type: %v", d.Type)
+		log.Printf("Device Serial: %v", d.SerialNumber)
+		fmt.Println()
+	}
+
+	return nil
+}
