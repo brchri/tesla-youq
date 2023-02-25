@@ -24,6 +24,7 @@ var (
 )
 
 func init() {
+	log.SetOutput(os.Stdout)
 	parseArgs()
 	loadConfig()
 	checkEnvVars()
