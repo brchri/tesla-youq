@@ -51,10 +51,12 @@ func CheckGeoFence(config t.ConfigStruct, car *t.Car) {
 	}
 
 	if car.CarAtHome && !withinGeofence(point, car.GarageCloseGeo.Center, car.GarageCloseGeo.Radius) { // check if outside the close geofence, meaning we should close the door
+		log.Printf("Attempting to close garage door for car %d", car.CarID)
 		setGarageDoor(config, car.MyQSerial, myq.ActionClose)
 		car.CarAtHome = false
 		time.Sleep(5 * time.Minute) // keep opLock true for 5 minutes to prevent flapping in case of overlapping geofences
 	} else if !car.CarAtHome && withinGeofence(point, car.GarageOpenGeo.Center, car.GarageOpenGeo.Radius) {
+		log.Printf("Attempting to open garage door for car %d", car.CarID)
 		setGarageDoor(config, car.MyQSerial, myq.ActionOpen)
 		car.CarAtHome = true
 		time.Sleep(5 * time.Minute) // keep opLock true for 5 minutes to prevent flapping in case of overlapping geofences
@@ -77,12 +79,11 @@ func setGarageDoor(config t.ConfigStruct, deviceSerial string, action string) er
 	}
 
 	if config.Testing {
-		log.Printf("Would attempt action %v", action)
-		time.Sleep(3 * time.Second)
+		log.Printf("TESTING flag set - Would attempt action %v", action)
 		return nil
 	}
 
-	log.Println("Attempting to get valid MyQ session...")
+	log.Println("Acquiring MyQ session...")
 	if err := s.Login(); err != nil {
 		log.SetOutput(os.Stderr)
 		log.Printf("ERROR: %v\n", err)

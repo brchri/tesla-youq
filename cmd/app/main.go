@@ -26,6 +26,7 @@ var (
 func init() {
 	parseArgs()
 	loadConfig()
+	checkEnvVars()
 	for _, car := range Config.Cars {
 		car.CarAtHome = true // set default to true
 	}
@@ -65,6 +66,7 @@ func loadConfig() {
 	if err != nil {
 		log.Fatalf("Could not load yaml from config file, received error: %v", err)
 	}
+	log.Println("Config loaded successfully")
 }
 
 func main() {
@@ -75,8 +77,6 @@ func main() {
 		debug, _ = strconv.ParseBool(value)
 	}
 	fmt.Println()
-
-	checkEnvVars()
 
 	// create a new MQTT client
 	opts := mqtt.NewClientOptions()
@@ -90,11 +90,13 @@ func main() {
 	// connect to the MQTT broker
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatalf("could not connect to mqtt broker: %v", token.Error())
+	} else {
+		log.Println("Connected to MQTT broker")
 	}
 
-	// create a channel to receive messages
+	// create channels to receive messages
 	for _, car := range Config.Cars {
-
+		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.CarID)
 		car.GeoChan = make(chan mqtt.Message)
 		car.LatChan = make(chan mqtt.Message)
 		car.LngChan = make(chan mqtt.Message)
@@ -109,15 +111,6 @@ func main() {
 		}
 
 		if token := client.Subscribe(
-			fmt.Sprintf("teslamate/cars/%d/longitude", car.CarID),
-			0,
-			func(client mqtt.Client, message mqtt.Message) {
-				car.LngChan <- message
-			}); token.Wait() && token.Error() != nil {
-			log.Fatalf("%v", token.Error())
-		}
-
-		if token := client.Subscribe(
 			fmt.Sprintf("teslamate/cars/%d/latitude", car.CarID),
 			0,
 			func(client mqtt.Client, message mqtt.Message) {
@@ -125,7 +118,18 @@ func main() {
 			}); token.Wait() && token.Error() != nil {
 			log.Fatalf("%v", token.Error())
 		}
+
+		if token := client.Subscribe(
+			fmt.Sprintf("teslamate/cars/%d/longitude", car.CarID),
+			0,
+			func(client mqtt.Client, message mqtt.Message) {
+				car.LngChan <- message
+			}); token.Wait() && token.Error() != nil {
+			log.Fatalf("%v", token.Error())
+		}
 	}
+
+	log.Println("Topics subscribed, listening for events...")
 
 	// listen for incoming messages
 	signalChannel := make(chan os.Signal, 1)
