@@ -1,9 +1,11 @@
 [Unit]
 Description=Open or close garage door based on tesla geofence
+After=network.target
 
 [Service]
 ExecStart=/usr/bin/myq-teslamate-geofence
 Restart=always
+Environment=CONFIG_FILE=/etc/myq-teslamate-geofence/config.yml
 StandardOutput=append:/var/log/myq-teslamate-geofence.log
 StandardError=append:/var/log/myq-teslamate-geofence.log
 
