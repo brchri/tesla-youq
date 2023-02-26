@@ -45,18 +45,21 @@ func parseArgs() {
 	flag.BoolVar(&GetDevices, "d", false, "get myq devices")
 	flag.Parse()
 
-	// if -c or --config wasn't passed, check for CONFIG_FILE env var
-	// if that fails, check for file at default location
-	if configFile == "" {
-		var exists bool
-		if configFile, exists = os.LookupEnv("CONFIG_FILE"); !exists {
-			log.Fatalf("Config file must be defined with '-c' or 'CONFIG_FILE' environment variable")
+	// only check for config if not getting devices
+	if !GetDevices {
+		// if -c or --config wasn't passed, check for CONFIG_FILE env var
+		// if that fails, check for file at default location
+		if configFile == "" {
+			var exists bool
+			if configFile, exists = os.LookupEnv("CONFIG_FILE"); !exists {
+				log.Fatalf("Config file must be defined with '-c' or 'CONFIG_FILE' environment variable")
+			}
 		}
-	}
 
-	// check that ConfigFile exists
-	if _, err := os.Stat(configFile); err != nil {
-		log.Fatalf("Config file %v doesn't exist!", configFile)
+		// check that ConfigFile exists
+		if _, err := os.Stat(configFile); err != nil {
+			log.Fatalf("Config file %v doesn't exist!", configFile)
+		}
 	}
 }
 
