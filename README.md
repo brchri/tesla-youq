@@ -39,4 +39,5 @@ TESTING=<bool> # will not actually operate the garage door
 ```
 
 ## Known Issues
-* Currently this only works with one vehicle. It is set up to work with multiple, but it hangs when receiving broker messages from MQTT for some reason. I haven't yet had time to dig into this.
+* ~~Currently this only works with one vehicle. It is set up to work with multiple, but it hangs when receiving broker messages from MQTT for some reason. I haven't yet had time to dig into this.~~
+  * This should be fixed as of v0.0.3

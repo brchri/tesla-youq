@@ -7,8 +7,9 @@ global:
   myq_pass: super_secret_password # can also be passed as env var MYQ_PASS
 
 cars:
-  - teslamate_car_id: 1
-    myq_serial: myq_serial
+  - &car_base
+    teslamate_car_id: 1
+    myq_serial: myq_serial_1
     garage_close_geofence:
       geo_center: &geo_center
         lat: 48.858195
@@ -17,3 +18,8 @@ cars:
     garage_open_geofence:
       geo_center: *geo_center
       geo_radius: .23138 # meters
+  - <<: *car_base # this will copy settings from the first car but override the id for car #2
+    teslamate_car_id: 2
+  - <<: *car_base # this will copy settings from the first car but override the id and serial for car #3
+    teslamate_car_id: 3
+    myq_serial: myq_serial_2
