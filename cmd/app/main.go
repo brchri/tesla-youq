@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -106,18 +107,17 @@ func main() {
 		log.Println("Connected to MQTT broker")
 	}
 
+	messageChan := make(chan mqtt.Message)
+
 	// create channels to receive messages
 	for _, car := range Config.Cars {
 		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.CarID)
-		car.GeoChan = make(chan mqtt.Message)
-		car.LatChan = make(chan mqtt.Message)
-		car.LngChan = make(chan mqtt.Message)
 
 		if token := client.Subscribe(
 			fmt.Sprintf("teslamate/cars/%d/geofence", car.CarID),
 			0,
 			func(client mqtt.Client, message mqtt.Message) {
-				car.GeoChan <- message
+				messageChan <- message
 			}); token.Wait() && token.Error() != nil {
 			log.Fatalf("%v", token.Error())
 		}
@@ -126,7 +126,7 @@ func main() {
 			fmt.Sprintf("teslamate/cars/%d/latitude", car.CarID),
 			0,
 			func(client mqtt.Client, message mqtt.Message) {
-				car.LatChan <- message
+				messageChan <- message
 			}); token.Wait() && token.Error() != nil {
 			log.Fatalf("%v", token.Error())
 		}
@@ -135,7 +135,7 @@ func main() {
 			fmt.Sprintf("teslamate/cars/%d/longitude", car.CarID),
 			0,
 			func(client mqtt.Client, message mqtt.Message) {
-				car.LngChan <- message
+				messageChan <- message
 			}); token.Wait() && token.Error() != nil {
 			log.Fatalf("%v", token.Error())
 		}
@@ -148,31 +148,38 @@ func main() {
 	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM)
 
 	for {
-		for _, car := range Config.Cars {
-			select {
-			case message := <-car.GeoChan:
+		select {
+		case message := <-messageChan:
+			m := strings.Split(message.Topic(), "/")
+			var car *t.Car
+			for _, c := range Config.Cars {
+				if fmt.Sprintf("%d", c.CarID) == m[2] {
+					car = c
+				}
+			}
+			switch m[3] {
+			case "geofence":
 				log.Printf("Received geo for car %d: %v", car.CarID, string(message.Payload()))
-
-			case message := <-car.LatChan:
+			case "latitude":
 				if debug {
 					log.Printf("Received lat for car %d: %v", car.CarID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
 				go geo.CheckGeoFence(Config, car)
-
-			case message := <-car.LngChan:
+			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.CarID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
 				go geo.CheckGeoFence(Config, car)
-
-			case <-signalChannel:
-				log.Println("Received interrupt signal, shutting down...")
-				client.Disconnect(250)
-				time.Sleep(250 * time.Millisecond)
-				return
 			}
+
+		case <-signalChannel:
+			log.Println("Received interrupt signal, shutting down...")
+			client.Disconnect(250)
+			time.Sleep(250 * time.Millisecond)
+			return
+
 		}
 	}
 }

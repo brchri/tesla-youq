@@ -59,7 +59,7 @@ func CheckGeoFence(config t.ConfigStruct, car *t.Car) {
 		log.Printf("Attempting to open garage door for car %d", car.CarID)
 		setGarageDoor(config, car.MyQSerial, myq.ActionOpen)
 		car.CarAtHome = true
-		time.Sleep(5 * time.Minute) // keep opLock true for 5 minutes to prevent flapping in case of overlapping geofences
+		time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
 	}
 
 	car.OpLock = false

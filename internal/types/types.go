@@ -1,9 +1,5 @@
 package types
 
-import (
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-)
-
 type (
 	Point struct {
 		Lat float64 `yaml:"lat"`
@@ -20,9 +16,6 @@ type (
 		MyQSerial      string   `yaml:"myq_serial"`
 		GarageCloseGeo Geofence `yaml:"garage_close_geofence"`
 		GarageOpenGeo  Geofence `yaml:"garage_open_geofence"`
-		GeoChan        chan mqtt.Message
-		LatChan        chan mqtt.Message
-		LngChan        chan mqtt.Message
 		CurLat         float64
 		CurLng         float64
 		OpLock         bool
