@@ -2,12 +2,13 @@ package geo
 
 import (
 	"fmt"
-	"github.com/joeshaw/myq"
 	"log"
 	"math"
 	t "myq-teslamate-geofence/internal/types"
 	"os"
 	"time"
+
+	"github.com/joeshaw/myq"
 )
 
 func withinGeofence(point t.Point, center t.Point, radius float64) bool {
@@ -50,15 +51,19 @@ func CheckGeoFence(config t.ConfigStruct, car *t.Car) {
 		Lng: car.CurLng,
 	}
 
-	if car.CarAtHome && !withinGeofence(point, car.GarageCloseGeo.Center, car.GarageCloseGeo.Radius) { // check if outside the close geofence, meaning we should close the door
-		log.Printf("Attempting to close garage door for car %d", car.CarID)
-		setGarageDoor(config, car.MyQSerial, myq.ActionClose)
-		car.CarAtHome = false
-		time.Sleep(5 * time.Minute) // keep opLock true for 5 minutes to prevent flapping in case of overlapping geofences
-	} else if !car.CarAtHome && withinGeofence(point, car.GarageOpenGeo.Center, car.GarageOpenGeo.Radius) {
-		log.Printf("Attempting to open garage door for car %d", car.CarID)
-		setGarageDoor(config, car.MyQSerial, myq.ActionOpen)
-		car.CarAtHome = true
+	var action string
+	withinGeofence := withinGeofence(point, car.GarageCloseGeo.Center, car.GarageCloseGeo.Radius)
+
+	if car.AtHome && !withinGeofence { // check if outside the close geofence, meaning we should close the door
+		action = myq.ActionClose
+	} else if !car.AtHome && withinGeofence {
+		action = myq.ActionOpen
+	}
+
+	if action != "" {
+		log.Printf("Attempting to %s garage door for car %d", action, car.CarID)
+		setGarageDoor(config, car.MyQSerial, action)
+		car.AtHome = !car.AtHome                                          // toggle CarAtHome status
 		time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
 	}
 

@@ -19,7 +19,7 @@ type (
 		CurLat         float64
 		CurLng         float64
 		OpLock         bool
-		CarAtHome      bool
+		AtHome         bool
 	}
 
 	ConfigStruct struct {

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"os"
 	"os/signal"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 
 	geo "myq-teslamate-geofence/internal/geo"
 	t "myq-teslamate-geofence/internal/types"
@@ -33,7 +34,7 @@ func init() {
 	}
 	checkEnvVars()
 	for _, car := range Config.Cars {
-		car.CarAtHome = true // set default to true
+		car.AtHome = true // set default to true
 	}
 }
 
