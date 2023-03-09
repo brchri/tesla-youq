@@ -1,6 +1,9 @@
 # myq-teslamate-geofence
 A lightweight portable app that uses the MQTT broker from TeslaMate to watch geofence event changes and open or close the garage door accordingly
 
+## Prerequisite
+This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adriankumpf/teslamate). You must be running TeslaMate and have the MQTT broker exposed for consumption to use this app. TeslaMate has many other features that make it more than worthwhile to use in addition to this app.
+
 ## How to use
 Download the release zip containing the binary and sample config.example.yml file. Edit the yml file to have the settings appropriate for your use case (see Notes section below for more info).
 
