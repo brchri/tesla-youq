@@ -62,7 +62,20 @@ func CheckGeoFence(config t.ConfigStruct, car *t.Car) {
 
 	if action != "" {
 		log.Printf("Attempting to %s garage door for car %d", action, car.CarID)
-		setGarageDoor(config, car.MyQSerial, action)
+
+		// create retry loop to set the garage door state
+		for i := 3; i > 0; i-- {
+			if err := setGarageDoor(config, car.MyQSerial, action); err == nil {
+				// no error received, so breaking retry loop
+				break
+			}
+			if i == 1 {
+				log.Println("Unable to set garage door state, no further attempts will be made")
+			} else {
+				log.Printf("Retrying set garage door state %d more time(s)", i-1)
+			}
+		}
+
 		car.AtHome = !car.AtHome                                          // toggle CarAtHome status
 		time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
 	}
