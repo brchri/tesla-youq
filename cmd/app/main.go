@@ -11,18 +11,15 @@ import (
 	"syscall"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-
 	geo "myq-teslamate-geofence/internal/geo"
-	t "myq-teslamate-geofence/internal/types"
+	util "myq-teslamate-geofence/internal/util"
 
-	"gopkg.in/yaml.v3"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 var (
 	debug      bool
 	configFile string
-	Config     t.ConfigStruct
 	GetDevices bool
 )
 
@@ -30,10 +27,10 @@ func init() {
 	log.SetOutput(os.Stdout)
 	parseArgs()
 	if !GetDevices {
-		loadConfig()
+		util.LoadConfig(configFile)
 	}
 	checkEnvVars()
-	for _, car := range Config.Cars {
+	for _, car := range util.Config.Cars {
 		car.AtHome = true // set default to true
 	}
 }
@@ -43,7 +40,7 @@ func parseArgs() {
 	// set up flags for parsing args
 	flag.StringVar(&configFile, "config", "", "location of config file")
 	flag.StringVar(&configFile, "c", "", "location of config file")
-	flag.BoolVar(&Config.Testing, "testing", false, "test case")
+	flag.BoolVar(&util.Config.Testing, "testing", false, "test case")
 	flag.BoolVar(&GetDevices, "d", false, "get myq devices")
 	flag.Parse()
 
@@ -65,27 +62,13 @@ func parseArgs() {
 	}
 }
 
-// load yaml config
-func loadConfig() {
-	yamlFile, err := os.ReadFile(configFile)
-	if err != nil {
-		log.Fatalf("Could not read config file: %v", err)
-	}
-
-	err = yaml.Unmarshal(yamlFile, &Config)
-	if err != nil {
-		log.Fatalf("Could not load yaml from config file, received error: %v", err)
-	}
-	log.Println("Config loaded successfully")
-}
-
 func main() {
 	if GetDevices {
-		geo.GetGarageDoorSerials(Config)
+		geo.GetGarageDoorSerials(util.Config)
 		return
 	}
 	if value, exists := os.LookupEnv("TESTING"); exists {
-		Config.Testing, _ = strconv.ParseBool(value)
+		util.Config.Testing, _ = strconv.ParseBool(value)
 	}
 	if value, exists := os.LookupEnv("DEBUG"); exists {
 		debug, _ = strconv.ParseBool(value)
@@ -95,8 +78,8 @@ func main() {
 	// create a new MQTT client
 	opts := mqtt.NewClientOptions()
 	opts.SetOrderMatters(false)
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", Config.Global.MqttHost, Config.Global.MqttPort))
-	opts.SetClientID(Config.Global.MqttClientID)
+	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", util.Config.Global.MqttHost, util.Config.Global.MqttPort))
+	opts.SetClientID(util.Config.Global.MqttClientID)
 
 	// create a new MQTT client object
 	client := mqtt.NewClient(opts)
@@ -111,7 +94,7 @@ func main() {
 	messageChan := make(chan mqtt.Message)
 
 	// create channels to receive messages
-	for _, car := range Config.Cars {
+	for _, car := range util.Config.Cars {
 		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.CarID)
 
 		if token := client.Subscribe(
@@ -152,8 +135,8 @@ func main() {
 		select {
 		case message := <-messageChan:
 			m := strings.Split(message.Topic(), "/")
-			var car *t.Car
-			for _, c := range Config.Cars {
+			var car *util.Car
+			for _, c := range util.Config.Cars {
 				if fmt.Sprintf("%d", c.CarID) == m[2] {
 					car = c
 				}
@@ -166,13 +149,13 @@ func main() {
 					log.Printf("Received lat for car %d: %v", car.CarID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(Config, car)
+				go geo.CheckGeoFence(util.Config, car)
 			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.CarID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(Config, car)
+				go geo.CheckGeoFence(util.Config, car)
 			}
 
 		case <-signalChannel:
@@ -189,12 +172,12 @@ func main() {
 func checkEnvVars() {
 	// override config with env vars if present
 	if value, exists := os.LookupEnv("MYQ_EMAIL"); exists {
-		Config.Global.MyQEmail = value
+		util.Config.Global.MyQEmail = value
 	}
 	if value, exists := os.LookupEnv("MYQ_PASS"); exists {
-		Config.Global.MyQPass = value
+		util.Config.Global.MyQPass = value
 	}
-	if Config.Global.MyQEmail == "" || Config.Global.MyQPass == "" {
+	if util.Config.Global.MyQEmail == "" || util.Config.Global.MyQPass == "" {
 		log.Fatal("MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
 	}
 }

@@ -1,4 +1,11 @@
-package types
+package util
+
+import (
+	"log"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
 
 type (
 	Point struct {
@@ -35,3 +42,19 @@ type (
 		Testing bool
 	}
 )
+
+var Config ConfigStruct
+
+// load yaml config
+func LoadConfig(configFile string) {
+	yamlFile, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Fatalf("Could not read config file: %v", err)
+	}
+
+	err = yaml.Unmarshal(yamlFile, &Config)
+	if err != nil {
+		log.Fatalf("Could not load yaml from config file, received error: %v", err)
+	}
+	log.Println("Config loaded successfully")
+}
