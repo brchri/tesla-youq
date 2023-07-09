@@ -13,20 +13,16 @@ type (
 		Lng float64 `yaml:"lng"`
 	}
 
-	Geofence struct {
-		Center Point   `yaml:"geo_center"`
-		Radius float64 `yaml:"geo_radius"`
-	}
-
 	Car struct {
-		CarID          int      `yaml:"teslamate_car_id"`
-		MyQSerial      string   `yaml:"myq_serial"`
-		GarageCloseGeo Geofence `yaml:"garage_close_geofence"`
-		GarageOpenGeo  Geofence `yaml:"garage_open_geofence"`
-		CurLat         float64
-		CurLng         float64
-		OpLock         bool
-		AtHome         bool
+		CarID             int     `yaml:"teslamate_car_id"`
+		MyQSerial         string  `yaml:"myq_serial"`
+		GarageLocation    Point   `yaml:"garage_location"`
+		GarageCloseRadius float64 `yaml:"garage_close_radius"`
+		GarageOpenRadius  float64 `yaml:"garage_open_radius"`
+		CurLat            float64
+		CurLng            float64
+		OpLock            bool
+		AtHome            bool
 	}
 
 	ConfigStruct struct {

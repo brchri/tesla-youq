@@ -52,12 +52,6 @@ func (m *MyqSessionWrapper) New() {
 
 var myqExec MyqSessionInterface = &MyqSessionWrapper{} // executes myq package commands
 
-func withinGeofence(point util.Point, center util.Point, radius float64) bool {
-	// Calculate the distance between the point and the center of the circle
-	distance := distance(point, center)
-	return distance <= radius
-}
-
 func distance(point1 util.Point, point2 util.Point) float64 {
 	// Calculate the distance between two points using the haversine formula
 	const radius = 6371 // Earth's radius in kilometers
@@ -93,10 +87,11 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 	}
 
 	var action string
+	distance := distance(point, car.GarageLocation)
 
-	if car.AtHome && !withinGeofence(point, car.GarageCloseGeo.Center, car.GarageCloseGeo.Radius) { // check if outside the close geofence, meaning we should close the door
+	if car.AtHome && distance > car.GarageCloseRadius { // check if outside the close geofence, meaning we should close the door
 		action = myq.ActionClose
-	} else if !car.AtHome && withinGeofence(point, car.GarageOpenGeo.Center, car.GarageOpenGeo.Radius) {
+	} else if !car.AtHome && distance <= car.GarageOpenRadius {
 		action = myq.ActionOpen
 	}
 

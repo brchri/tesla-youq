@@ -67,8 +67,8 @@ func Test_CheckGeoFence_Leaving(t *testing.T) {
 	// TEST 1 - Leaving home, garage close
 	car.AtHome = true
 	testParams = &testParamsStruct{}
-	car.CurLat = car.GarageCloseGeo.Center.Lat + 10
-	car.CurLng = car.GarageCloseGeo.Center.Lng
+	car.CurLat = car.GarageLocation.Lat + 10
+	car.CurLng = car.GarageLocation.Lng
 
 	deviceStateReturnValue = "open"
 
@@ -101,8 +101,8 @@ func Test_CheckGeofence_LeaveRetry(t *testing.T) {
 	// TEST 2 - Leaving home, garage close, fail and retry 3 times
 	car.AtHome = true
 	testParams = &testParamsStruct{}
-	car.CurLat = car.GarageCloseGeo.Center.Lat + 10
-	car.CurLng = car.GarageCloseGeo.Center.Lng
+	car.CurLat = car.GarageLocation.Lat + 10
+	car.CurLng = car.GarageLocation.Lng
 
 	deviceStateReturnValue = "open"
 	setDoorStateError = fmt.Errorf("mock error")
@@ -125,8 +125,8 @@ func Test_CheckGeofence_Arrive(t *testing.T) {
 	// TEST 3 - Arriving Home
 	car.AtHome = false
 	testParams = &testParamsStruct{}
-	car.CurLat = car.GarageCloseGeo.Center.Lat
-	car.CurLng = car.GarageCloseGeo.Center.Lng
+	car.CurLat = car.GarageLocation.Lat
+	car.CurLng = car.GarageLocation.Lng
 	var wg sync.WaitGroup
 
 	deviceStateReturnValue = "closed"
