@@ -8,24 +8,20 @@ global:
 
 garage_doors:
   - &main_door
-    id: 1 # must be unique, referenced by cars below
     location:
       lat: 48.858195
       lng: 2.294689
     close_radius: .03503 # kilometers
     open_radius: .23138 # kilometers
     myq_serial: myq_serial_1
+    cars:
+      - teslamage_car_id: 1
+      - teslamate_car_id: 2
   - <<: *main_door
     id: 2
     location:
       lat: 48.858197
       lng: 2.294689
     myq_serial: myq_serial_2
-
-cars:
-  - teslamate_car_id: 1
-    garage_door_id: 1 # car 1 and car 2 share the same garage door, e.g. 2-car garage
-  - teslamate_car_id: 2
-    garage_door_id: 1
-  - teslamate_car_id: 3
-    garage_door_id: 2 # car 3 has a separate garage door, e.g. 3rd car garage
+    cars:
+      - teslamate_car_id: 3

@@ -21,6 +21,7 @@ var (
 	debug      bool
 	configFile string
 	GetDevices bool
+	cars       []*util.Car // list of all cars from all garage doors
 )
 
 func init() {
@@ -30,8 +31,12 @@ func init() {
 		util.LoadConfig(configFile)
 	}
 	checkEnvVars()
-	for _, car := range util.Config.Cars {
-		car.AtHome = true // set default to true
+	for _, garageDoor := range util.Config.GarageDoors {
+		for _, car := range garageDoor.Cars {
+			car.AtHome = true // set default to true
+			car.GarageDoor = garageDoor
+			cars = append(cars, car)
+		}
 	}
 }
 
@@ -94,7 +99,7 @@ func main() {
 	messageChan := make(chan mqtt.Message)
 
 	// create channels to receive messages
-	for _, car := range util.Config.Cars {
+	for _, car := range cars {
 		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.ID)
 
 		for _, topic := range []string{"geofence", "latitude", "longitude"} {
@@ -122,22 +127,11 @@ func main() {
 
 			// locate car and car's garage door
 			var car *util.Car
-			var garageDoor *util.GarageDoor
-			for _, c := range util.Config.Cars {
+			for _, c := range cars {
 				if fmt.Sprintf("%d", c.ID) == m[2] {
 					car = c
 					break
 				}
-			}
-			for _, g := range util.Config.GarageDoors {
-				if g.ID == car.GarageDoorID {
-					garageDoor = g
-					break
-				}
-			}
-			if garageDoor == nil {
-				log.Printf("[WARNING] Unable to locate a valid garage door for car: %d, skipping...", car.ID)
-				continue
 			}
 
 			// if lat or lng received, check geofence
@@ -149,13 +143,13 @@ func main() {
 					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car, garageDoor)
+				go geo.CheckGeoFence(util.Config, car)
 			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car, garageDoor)
+				go geo.CheckGeoFence(util.Config, car)
 			}
 
 		case <-signalChannel:

@@ -57,13 +57,9 @@ func (m *MockMyqSession) New() {}
 
 func init() {
 	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
-	car = util.Config.Cars[0]
-	for _, g := range util.Config.GarageDoors {
-		if g.ID == car.GarageDoorID {
-			garageDoor = g
-			break
-		}
-	}
+	garageDoor = util.Config.GarageDoors[0]
+	car = garageDoor.Cars[0]
+	car.GarageDoor = garageDoor
 	util.Config.Global.OpCooldown = 0
 }
 
@@ -82,7 +78,7 @@ func Test_CheckGeoFence_Leaving(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		CheckGeoFence(util.Config, car, garageDoor)
+		CheckGeoFence(util.Config, car)
 	}()
 	// wait for SetGarageDoor call and then update call
 	for {
@@ -114,7 +110,7 @@ func Test_CheckGeofence_LeaveRetry(t *testing.T) {
 	deviceStateReturnValue = "open"
 	setDoorStateError = fmt.Errorf("mock error")
 
-	CheckGeoFence(util.Config, car, garageDoor)
+	CheckGeoFence(util.Config, car)
 
 	want := []int{3, 3, 3, 3}
 	got := []int{testParams.setUsernameCount,
@@ -142,7 +138,7 @@ func Test_CheckGeofence_Arrive(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		CheckGeoFence(util.Config, car, garageDoor)
+		CheckGeoFence(util.Config, car)
 	}()
 	// wait for SetGarageDoor call and then update call
 	for {

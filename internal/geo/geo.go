@@ -70,7 +70,7 @@ func toRadians(degrees float64) float64 {
 }
 
 // check if outside close geo or inside open geo and set garage door state accordingly
-func CheckGeoFence(config util.ConfigStruct, car *util.Car, garageDoor *util.GarageDoor) {
+func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 
 	if car.CurLat == 0 || car.CurLng == 0 {
 		return // need valid lat and lng to check fence
@@ -83,26 +83,26 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car, garageDoor *util.Gar
 	}
 
 	var action string
-	distance := distance(carLocation, garageDoor.Location)
+	distance := distance(carLocation, car.GarageDoor.Location)
 
-	if car.AtHome && distance > garageDoor.CloseRadius { // check if outside the close geofence, meaning we should close the door
+	if car.AtHome && distance > car.GarageDoor.CloseRadius { // check if outside the close geofence, meaning we should close the door
 		action = myq.ActionClose
 		car.AtHome = false
-	} else if !car.AtHome && distance <= garageDoor.OpenRadius {
+	} else if !car.AtHome && distance <= car.GarageDoor.OpenRadius {
 		action = myq.ActionOpen
 		car.AtHome = true
 	}
 
-	if action == "" || garageDoor.OpLock {
+	if action == "" || car.GarageDoor.OpLock {
 		return // only execute if there's a valid action to execute and the garage door isn't on cooldown
 	}
 
-	garageDoor.OpLock = true // set lock so no other threads try to operate the garage before the cooldown period is complete
+	car.GarageDoor.OpLock = true // set lock so no other threads try to operate the garage before the cooldown period is complete
 	log.Printf("Attempting to %s garage door for car %d", action, car.ID)
 
 	// create retry loop to set the garage door state
 	for i := 3; i > 0; i-- {
-		if err := setGarageDoor(config, garageDoor.MyQSerial, action); err == nil {
+		if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
 			// no error received, so breaking retry loop
 			break
 		}
@@ -114,7 +114,7 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car, garageDoor *util.Gar
 	}
 
 	time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
-	garageDoor.OpLock = false                                         // release garage door's operation lock
+	car.GarageDoor.OpLock = false                                     // release garage door's operation lock
 }
 
 func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string) error {
