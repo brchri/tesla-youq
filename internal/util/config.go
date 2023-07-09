@@ -14,15 +14,20 @@ type (
 	}
 
 	Car struct {
-		CarID             int     `yaml:"teslamate_car_id"`
-		MyQSerial         string  `yaml:"myq_serial"`
-		GarageLocation    Point   `yaml:"garage_location"`
-		GarageCloseRadius float64 `yaml:"garage_close_radius"`
-		GarageOpenRadius  float64 `yaml:"garage_open_radius"`
-		CurLat            float64
-		CurLng            float64
-		OpLock            bool
-		AtHome            bool
+		ID           int `yaml:"teslamate_car_id"`
+		GarageDoorID int `yaml:"garage_door_id"`
+		CurLat       float64
+		CurLng       float64
+		AtHome       bool
+	}
+
+	GarageDoor struct {
+		ID          int     `yaml:"id"`
+		Location    Point   `yaml:"location"`
+		CloseRadius float64 `yaml:"close_radius"`
+		OpenRadius  float64 `yaml:"open_radius"`
+		MyQSerial   string  `yaml:"myq_serial"`
+		OpLock      bool
 	}
 
 	ConfigStruct struct {
@@ -34,8 +39,9 @@ type (
 			MyQEmail     string `yaml:"myq_email"`
 			MyQPass      string `yaml:"myq_pass"`
 		} `yaml:"global"`
-		Cars    []*Car `yaml:"cars"`
-		Testing bool
+		Cars        []*Car        `yaml:"cars"`
+		GarageDoors []*GarageDoor `yaml:"garage_doors"`
+		Testing     bool
 	}
 )
 

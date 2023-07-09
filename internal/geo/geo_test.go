@@ -26,7 +26,8 @@ var (
 	loginError             error
 	setDoorStateError      error
 
-	car *util.Car
+	car        *util.Car
+	garageDoor *util.GarageDoor
 )
 
 func (m *MockMyqSession) SetUsername(s string) {
@@ -57,6 +58,12 @@ func (m *MockMyqSession) New() {}
 func init() {
 	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
 	car = util.Config.Cars[0]
+	for _, g := range util.Config.GarageDoors {
+		if g.ID == car.GarageDoorID {
+			garageDoor = g
+			break
+		}
+	}
 	util.Config.Global.OpCooldown = 0
 }
 
@@ -67,15 +74,15 @@ func Test_CheckGeoFence_Leaving(t *testing.T) {
 	// TEST 1 - Leaving home, garage close
 	car.AtHome = true
 	testParams = &testParamsStruct{}
-	car.CurLat = car.GarageLocation.Lat + 10
-	car.CurLng = car.GarageLocation.Lng
+	car.CurLat = garageDoor.Location.Lat + 10
+	car.CurLng = garageDoor.Location.Lng
 
 	deviceStateReturnValue = "open"
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		CheckGeoFence(util.Config, car)
+		CheckGeoFence(util.Config, car, garageDoor)
 	}()
 	// wait for SetGarageDoor call and then update call
 	for {
@@ -101,13 +108,13 @@ func Test_CheckGeofence_LeaveRetry(t *testing.T) {
 	// TEST 2 - Leaving home, garage close, fail and retry 3 times
 	car.AtHome = true
 	testParams = &testParamsStruct{}
-	car.CurLat = car.GarageLocation.Lat + 10
-	car.CurLng = car.GarageLocation.Lng
+	car.CurLat = garageDoor.Location.Lat + 10
+	car.CurLng = garageDoor.Location.Lng
 
 	deviceStateReturnValue = "open"
 	setDoorStateError = fmt.Errorf("mock error")
 
-	CheckGeoFence(util.Config, car)
+	CheckGeoFence(util.Config, car, garageDoor)
 
 	want := []int{3, 3, 3, 3}
 	got := []int{testParams.setUsernameCount,
@@ -125,8 +132,8 @@ func Test_CheckGeofence_Arrive(t *testing.T) {
 	// TEST 3 - Arriving Home
 	car.AtHome = false
 	testParams = &testParamsStruct{}
-	car.CurLat = car.GarageLocation.Lat
-	car.CurLng = car.GarageLocation.Lng
+	car.CurLat = garageDoor.Location.Lat
+	car.CurLng = garageDoor.Location.Lng
 	var wg sync.WaitGroup
 
 	deviceStateReturnValue = "closed"
@@ -135,7 +142,7 @@ func Test_CheckGeofence_Arrive(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		CheckGeoFence(util.Config, car)
+		CheckGeoFence(util.Config, car, garageDoor)
 	}()
 	// wait for SetGarageDoor call and then update call
 	for {

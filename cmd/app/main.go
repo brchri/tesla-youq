@@ -95,33 +95,17 @@ func main() {
 
 	// create channels to receive messages
 	for _, car := range util.Config.Cars {
-		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.CarID)
+		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.ID)
 
-		if token := client.Subscribe(
-			fmt.Sprintf("teslamate/cars/%d/geofence", car.CarID),
-			0,
-			func(client mqtt.Client, message mqtt.Message) {
-				messageChan <- message
-			}); token.Wait() && token.Error() != nil {
-			log.Fatalf("%v", token.Error())
-		}
-
-		if token := client.Subscribe(
-			fmt.Sprintf("teslamate/cars/%d/latitude", car.CarID),
-			0,
-			func(client mqtt.Client, message mqtt.Message) {
-				messageChan <- message
-			}); token.Wait() && token.Error() != nil {
-			log.Fatalf("%v", token.Error())
-		}
-
-		if token := client.Subscribe(
-			fmt.Sprintf("teslamate/cars/%d/longitude", car.CarID),
-			0,
-			func(client mqtt.Client, message mqtt.Message) {
-				messageChan <- message
-			}); token.Wait() && token.Error() != nil {
-			log.Fatalf("%v", token.Error())
+		for _, topic := range []string{"geofence", "latitude", "longitude"} {
+			if token := client.Subscribe(
+				fmt.Sprintf("teslamate/cars/%d/%s", car.ID, topic),
+				0,
+				func(client mqtt.Client, message mqtt.Message) {
+					messageChan <- message
+				}); token.Wait() && token.Error() != nil {
+				log.Fatalf("%v", token.Error())
+			}
 		}
 	}
 
@@ -135,27 +119,43 @@ func main() {
 		select {
 		case message := <-messageChan:
 			m := strings.Split(message.Topic(), "/")
+
+			// locate car and car's garage door
 			var car *util.Car
+			var garageDoor *util.GarageDoor
 			for _, c := range util.Config.Cars {
-				if fmt.Sprintf("%d", c.CarID) == m[2] {
+				if fmt.Sprintf("%d", c.ID) == m[2] {
 					car = c
+					break
 				}
 			}
+			for _, g := range util.Config.GarageDoors {
+				if g.ID == car.GarageDoorID {
+					garageDoor = g
+					break
+				}
+			}
+			if garageDoor == nil {
+				log.Printf("[WARNING] Unable to locate a valid garage door for car: %d, skipping...", car.ID)
+				continue
+			}
+
+			// if lat or lng received, check geofence
 			switch m[3] {
 			case "geofence":
-				log.Printf("Received geo for car %d: %v", car.CarID, string(message.Payload()))
+				log.Printf("Received geo for car %d: %v", car.ID, string(message.Payload()))
 			case "latitude":
 				if debug {
-					log.Printf("Received lat for car %d: %v", car.CarID, string(message.Payload()))
+					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeoFence(util.Config, car, garageDoor)
 			case "longitude":
 				if debug {
-					log.Printf("Received long for car %d: %v", car.CarID, string(message.Payload()))
+					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeoFence(util.Config, car, garageDoor)
 			}
 
 		case <-signalChannel:
