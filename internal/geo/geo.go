@@ -85,13 +85,20 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 	var action string
 	distance := distance(carLocation, car.GarageDoor.Location)
 
-	if car.AtHome && distance > car.GarageDoor.CloseRadius { // check if outside the close geofence, meaning we should close the door
+	// garage close condition: car is at home, farther than close radius, and distance increasing (moving away from garage / departing)
+	// garage open condition: car not at home, closer than open radius, and distance decreasing (moving closer to garage / arriving)
+	// if OpenRadius > CloseRadius, then there's an overlap zone where the car will flap between "AtHome" and "!AtHome", which
+	// is why we need to check if the distance is increasing or decreasing, so we know if the car is arriving or departing and can
+	// avoid the flapping in that middle zone
+	if car.AtHome && distance > car.GarageDoor.CloseRadius && distance > car.CurDistance {
 		action = myq.ActionClose
 		car.AtHome = false
-	} else if !car.AtHome && distance <= car.GarageDoor.OpenRadius {
+	} else if !car.AtHome && distance <= car.GarageDoor.OpenRadius && distance < car.CurDistance {
 		action = myq.ActionOpen
 		car.AtHome = true
 	}
+
+	car.CurDistance = distance
 
 	if action == "" || car.GarageDoor.OpLock {
 		return // only execute if there's a valid action to execute and the garage door isn't on cooldown

@@ -14,11 +14,12 @@ type (
 	}
 
 	Car struct {
-		ID         int `yaml:"teslamate_car_id"`
-		GarageDoor *GarageDoor
-		CurLat     float64
-		CurLng     float64
-		AtHome     bool
+		ID          int `yaml:"teslamate_car_id"`
+		GarageDoor  *GarageDoor
+		CurLat      float64
+		CurLng      float64
+		CurDistance float64
+		AtHome      bool
 	}
 
 	GarageDoor struct {

@@ -61,14 +61,15 @@ func init() {
 	car = garageDoor.Cars[0]
 	car.GarageDoor = garageDoor
 	util.Config.Global.OpCooldown = 0
+	myqExec = &MockMyqSession{}
 }
 
 func Test_CheckGeoFence_Leaving(t *testing.T) {
-	myqExec = &MockMyqSession{}
 	var wg sync.WaitGroup
 
 	// TEST 1 - Leaving home, garage close
 	car.AtHome = true
+	car.CurDistance = 0
 	testParams = &testParamsStruct{}
 	car.CurLat = garageDoor.Location.Lat + 10
 	car.CurLng = garageDoor.Location.Lng
@@ -103,6 +104,7 @@ func Test_CheckGeoFence_Leaving(t *testing.T) {
 func Test_CheckGeofence_LeaveRetry(t *testing.T) {
 	// TEST 2 - Leaving home, garage close, fail and retry 3 times
 	car.AtHome = true
+	car.CurDistance = 0
 	testParams = &testParamsStruct{}
 	car.CurLat = garageDoor.Location.Lat + 10
 	car.CurLng = garageDoor.Location.Lng
@@ -127,6 +129,7 @@ func Test_CheckGeofence_LeaveRetry(t *testing.T) {
 func Test_CheckGeofence_Arrive(t *testing.T) {
 	// TEST 3 - Arriving Home
 	car.AtHome = false
+	car.CurDistance = 1
 	testParams = &testParamsStruct{}
 	car.CurLat = garageDoor.Location.Lat
 	car.CurLng = garageDoor.Location.Lng
