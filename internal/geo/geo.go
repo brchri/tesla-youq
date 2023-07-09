@@ -52,11 +52,10 @@ func CheckGeoFence(config t.ConfigStruct, car *t.Car) {
 	}
 
 	var action string
-	withinGeofence := withinGeofence(point, car.GarageCloseGeo.Center, car.GarageCloseGeo.Radius)
 
-	if car.AtHome && !withinGeofence { // check if outside the close geofence, meaning we should close the door
+	if car.AtHome && !withinGeofence(point, car.GarageCloseGeo.Center, car.GarageCloseGeo.Radius) { // check if outside the close geofence, meaning we should close the door
 		action = myq.ActionClose
-	} else if !car.AtHome && withinGeofence {
+	} else if !car.AtHome && withinGeofence(point, car.GarageOpenGeo.Center, car.GarageOpenGeo.Radius) {
 		action = myq.ActionOpen
 	}
 
