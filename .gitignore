@@ -1,5 +1,6 @@
 .vscode
 config.yml
+*.bak
 
 # Binaries for programs and plugins
 *.exe
@@ -7,6 +8,8 @@ config.yml
 *.dll
 *.so
 *.dylib
+*.zip
+myq-teslamate-geofence-v*
 
 # Test binary, built with `go test -c`
 *.test

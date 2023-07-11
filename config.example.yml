@@ -2,24 +2,25 @@ global:
   mqtt_host: localhost
   mqtt_port: 1883
   mqtt_client_id: myq-teslamate-geofence
-  cooldown: 5 # minutes to wait after operating garage before checking geo_fences again
+  cooldown: 5 # minutes to wait after operating garage before allowing another garage operation
   myq_email: myq@example.com # can also be passed as env var MYQ_EMAIL
   myq_pass: super_secret_password # can also be passed as env var MYQ_PASS
 
-cars:
-  - &car_base
-    teslamate_car_id: 1
+garage_doors:
+  - &main_door
+    location:
+      lat: 48.858195
+      lng: 2.294689
+    close_radius: .03503 # distance in kilometers car must travel away from garage location to close garage door, should be <= open_radius
+    open_radius: .23138 # distance in kilometers car must be in range of garage location to open garage door, should be >= close_radius
     myq_serial: myq_serial_1
-    garage_close_geofence:
-      geo_center: &geo_center
-        lat: 48.858195
-        lng: 2.294689
-      geo_radius: .03503 # kilometers
-    garage_open_geofence:
-      geo_center: *geo_center
-      geo_radius: .23138 # kilometers
-  - <<: *car_base # this will copy settings from the first car but override the id for car #2
-    teslamate_car_id: 2
-  - <<: *car_base # this will copy settings from the first car but override the id and serial for car #3
-    teslamate_car_id: 3
+    cars:
+      - teslamage_car_id: 1
+      - teslamate_car_id: 2
+  - <<: *main_door # will inherit all properties defined in the first garage_door, with overrides listed below
+    location:
+      lat: 48.858197
+      lng: 2.294689
     myq_serial: myq_serial_2
+    cars:
+      - teslamate_car_id: 3
