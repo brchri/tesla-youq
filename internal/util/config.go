@@ -19,7 +19,6 @@ type (
 		CurLat      float64
 		CurLng      float64
 		CurDistance float64
-		AtHome      bool
 	}
 
 	GarageDoor struct {

@@ -33,7 +33,6 @@ func init() {
 	checkEnvVars()
 	for _, garageDoor := range util.Config.GarageDoors {
 		for _, car := range garageDoor.Cars {
-			car.AtHome = true // set default to true
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
 		}
