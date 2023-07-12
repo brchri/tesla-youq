@@ -76,7 +76,13 @@ The serial displayed in your MyQ app may not be the serial used to control your 
 
 Docker image:
 
-`docker run --rm -e MYQ_EMAIL=myq@example.com -e MYQ_PASS=supersecretpass brchri/myq-teslamate-geofence:0.1.0 myq-teslamate-geofence -d`
+```shell
+docker run --rm \
+  -e MYQ_EMAIL=myq@example.com \
+  -e MYQ_PASS=supersecretpass \
+  brchri/myq-teslamate-geofence:0.1.0 \
+  myq-teslamate-geofence -d
+```
 
 Portable app:
 
