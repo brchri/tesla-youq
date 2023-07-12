@@ -19,9 +19,8 @@ RUN apk add --no-cache bash && \
     adduser --uid $USER_UID --ingroup nonroot --system --shell bin/bash nonroot && \
     chown -R nonroot:nonroot /app
 
-COPY --from=builder --chown=nonroot:nonroot /app/myq-teslamate-geofence /app/config.example.yml /app/
+COPY --from=builder --chown=nonroot:nonroot --chmod=755 /app/myq-teslamate-geofence /app/config.example.yml /app/
 
-RUN chmod +x /app/myq-teslamate-geofence
 ENV PATH="/app:${PATH}"
 
 USER nonroot

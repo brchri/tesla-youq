@@ -83,6 +83,9 @@ func main() {
 	opts := mqtt.NewClientOptions()
 	opts.SetOrderMatters(false)
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", util.Config.Global.MqttHost, util.Config.Global.MqttPort))
+	opts.SetKeepAlive(30 * time.Second)
+	opts.SetPingTimeout(10 * time.Second)
+	opts.SetAutoReconnect(true)
 	opts.SetClientID(util.Config.Global.MqttClientID)
 
 	// create a new MQTT client object
