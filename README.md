@@ -36,7 +36,7 @@ docker run \
 
 Or you can use a docker compose file like this:
 
-```docker
+```yaml
 version: '3.8'
 services:
 
