@@ -1,10 +1,14 @@
 FROM golang:1.20.5-alpine3.18 AS builder
 
+ARG BUILD_VERSION
+
+RUN test -n "${BUILD_VERSION}" || (echo "Build argument BUILD_VERSION is required but not provided" && exit 1)
+
 WORKDIR /app
 COPY . /app
 
 RUN go test ./...
-RUN go build -o myq-teslamate-geofence cmd/app/main.go
+RUN go build -ldflags="-X main.version=${BUILD_VERSION}" -o myq-teslamate-geofence cmd/app/main.go
 
 FROM alpine:3.18
 
