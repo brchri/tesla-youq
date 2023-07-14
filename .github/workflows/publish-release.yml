@@ -26,5 +26,5 @@ jobs:
       - name: Build and Push Docker image
         run: |
           BUILD_VERSION="${{ steps.extract-version.outputs.version }}"
-          docker build --build-arg BUILD_VERSION=${BUILD_VERSION} -t ${{ secrets.DOCKERHUB_USERNAME }}/myq-teslamate-geofence:${BUILD_VERSION} .
+          DOCKER_BUILDKIT=1 docker build --build-arg BUILD_VERSION=${BUILD_VERSION} -t ${{ secrets.DOCKERHUB_USERNAME }}/myq-teslamate-geofence:${BUILD_VERSION} .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/myq-teslamate-geofence:${BUILD_VERSION}
