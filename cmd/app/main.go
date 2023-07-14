@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -21,7 +23,9 @@ var (
 	debug      bool
 	configFile string
 	GetDevices bool
-	cars       []*util.Car // list of all cars from all garage doors
+	GetVersion bool
+	cars       []*util.Car           // list of all cars from all garage doors
+	version    string      = "0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
 )
 
 func init() {
@@ -46,7 +50,15 @@ func parseArgs() {
 	flag.StringVar(&configFile, "c", "", "location of config file")
 	flag.BoolVar(&util.Config.Testing, "testing", false, "test case")
 	flag.BoolVar(&GetDevices, "d", false, "get myq devices")
+	flag.BoolVar(&GetVersion, "v", false, "print version info and return")
+	flag.BoolVar(&GetVersion, "version", false, "print version info and return")
 	flag.Parse()
+
+	if GetVersion {
+		versionInfo := filepath.Base(os.Args[0]) + " v" + version + " " + runtime.GOOS + "/" + runtime.GOARCH
+		fmt.Println(versionInfo)
+		os.Exit(0)
+	}
 
 	// only check for config if not getting devices
 	if !GetDevices {
@@ -83,6 +95,9 @@ func main() {
 	opts := mqtt.NewClientOptions()
 	opts.SetOrderMatters(false)
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", util.Config.Global.MqttHost, util.Config.Global.MqttPort))
+	opts.SetKeepAlive(30 * time.Second)
+	opts.SetPingTimeout(10 * time.Second)
+	opts.SetAutoReconnect(true)
 	opts.SetClientID(util.Config.Global.MqttClientID)
 
 	// create a new MQTT client object

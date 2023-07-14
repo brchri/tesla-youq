@@ -1,0 +1,30 @@
+name: Publish Docker Image
+
+on:
+  create:
+    tags:
+      - 'release-v*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version from Git tag
+        id: extract-version
+        run: echo "::set-output name=version::${GITHUB_REF#refs/tags/release-v}"
+
+      - name: Build and Push Docker image
+        run: |
+          BUILD_VERSION="${{ steps.extract-version.outputs.version }}"
+          docker build --build-arg BUILD_VERSION=${BUILD_VERSION} -t ${{ secrets.DOCKERHUB_USERNAME }}/myq-teslamate-geofence:${BUILD_VERSION} .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/myq-teslamate-geofence:${BUILD_VERSION}
