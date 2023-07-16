@@ -81,7 +81,7 @@ jobs:
 
       - name: Test
         run: |
-          docker run --rm ${{ format('{0}:{1}', env.REGISTRY_IMAGE, steps.meta.outputs.version) }} /app/tesla-youq -v
+          docker run --rm ${{ format('{0}@{1}', env.REGISTRY_IMAGE, steps.build.outputs.digest) }} /app/tesla-youq -v
 
       - name: Export digest
         run: |
