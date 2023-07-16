@@ -9,7 +9,7 @@ config.yml
 *.so
 *.dylib
 *.zip
-myq-teslamate-geofence-v*
+tesla-youq-v*
 
 # Test binary, built with `go test -c`
 *.test

@@ -1,4 +1,4 @@
-module myq-teslamate-geofence
+module github.com/brchri/tesla-youq
 
 go 1.19
 

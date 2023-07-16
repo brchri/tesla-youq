@@ -1,9 +1,9 @@
-# myq-teslamate-geofence
-A lightweight portable app that uses the MQTT broker from TeslaMate to track your Tesla's location and operate your MyQ garage door based on whether you're arriving or leaving.
+# Tesla-YouQ
+A lightweight app that will operate your MyQ connected garage doors based on the location of your Tesla vehicles, automatically closing when you leave, and opening when you return. Supports multiple vehicles and MyQ devices.
 
 <!-- TOC -->
 
-- [myq-teslamate-geofence](#myq-teslamate-geofence)
+- [Tesla-YouQ](#tesla-youq)
   - [Prerequisite](#prerequisite)
   - [How to use](#how-to-use)
     - [Docker](#docker)
@@ -11,26 +11,25 @@ A lightweight portable app that uses the MQTT broker from TeslaMate to track you
   - [Notes](#notes)
     - [Serials](#serials)
     - [Geofences](#geofences)
-    - [Run as a Service](#run-as-a-service)
     - [Supported Environment Variables](#supported-environment-variables)
-  - [Known Issues](#known-issues)
+  - [Credits](#credits)
 
 <!-- /TOC -->
 
 ## Prerequisite
-This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adriankumpf/teslamate). You must be running TeslaMate and have the MQTT broker exposed for consumption to use this app. TeslaMate has many other features that make it more than worthwhile to use in addition to this app.
+This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adriankumpf/teslamate). You must be running TeslaMate and have the MQTT broker exposed for consumption to use this app. TeslaMate has done a lot of work in scraping API data while minimizing vampire drain on vehicles from API requests, and TeslaMate has many other features that make it more than worthwhile to use in addition to this app.
 
 ## How to use
 ### Docker
-There is now a docker image available and will be the only supported release type going forward. You will still need to download the [config.example.yml](https://github.com/brchri/myq-teslamate-geofence/blob/main/config.example.yml) file and edit it appropriately, and then mount it to the container at runtime. For example:
+There is now a docker image available and will be the only supported release type going forward. You will need to download the [config.example.yml](https://github.com/brchri/tesla-youq/blob/main/config.example.yml) file and edit it appropriately, and then mount it to the container at runtime. For example:
 
 ```bash
 docker run \
   -e MYQ_EMAIL=my_email@address.com \ # optional, can also be saved in the config.yml file
   -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
   -e TZ=America/New_York \ # optional, sets timezone for container
-  -v /etc/myq-teslamate-geofence/config.yml:/app/config/config.yml:ro \ # required, config file volume
-  brchri/myq-teslamate-geofence:0.1.0
+  -v /etc/tesla-youq/config.yml:/app/config/config.yml:ro \ # required, config file volume
+  brchri/tesla-youq:0.1.1
 ```
 
 Or you can use a docker compose file like this:
@@ -39,15 +38,15 @@ Or you can use a docker compose file like this:
 version: '3.8'
 services:
 
-  myq-teslamate-geofence:
-    image: brchri/myq-teslamate-geofence:0.1.0
-    container_name: myq-teslamate-geofence
+  tesla-youq:
+    image: brchri/tesla-youq:0.1.1
+    container_name: tesla-youq
     environment:
       - MYQ_EMAIL=my_email@address.com # optional, can also be saved in the config.yml file
       - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
       - TZ=America/New_York # optional, sets timezone for container
     volumes:
-      - /etc/myq-teslamate-geofence/config.yml:/app/config/config.yml:ro # required, config file volume
+      - /etc/tesla-youq/config.yml:/app/config/config.yml:ro # required, config file volume
     restart: unless-stopped
 ```
 
@@ -58,13 +57,13 @@ Download the release zip containing the binary and sample `config.example.yml` f
 
 Open a terminal (e.g. bash on linux or cmd/powershell on Windows), `cd` to the directory containing the downloaded binary, and execute it with a `-c` flag to point to your config file. Here's an example:
 
-`myq-teslamate-geofence -c /etc/myq-teslamate-geofence/config.yml`
+`tesla-youq -c /etc/tesla-youq/config.yml`
 
 You can also set `CONFIG_FILE` environment variable to pass the config file directory:
 
 ```bash
-export CONFIG_FILE=/etc/myq-teslamate-geofence/config.yml
-myq-teslamate-geofence
+export CONFIG_FILE=/etc/tesla-youq/config.yml
+tesla-youq
 ```
 
 ## Notes
@@ -78,21 +77,16 @@ Docker image:
 docker run --rm \
   -e MYQ_EMAIL=myq@example.com \
   -e MYQ_PASS=supersecretpass \
-  brchri/myq-teslamate-geofence:0.1.0 \
-  myq-teslamate-geofence -d
+  brchri/tesla-youq:0.1.1 \
+  tesla-youq -d
 ```
 
 Portable app:
 
-`MYQ_EMAIL=myq@example.com MYQ_PASS=supersecretpass myq-teslamate-geofence -d`
+`MYQ_EMAIL=myq@example.com MYQ_PASS=supersecretpass tesla-youq -d`
 
 ### Geofences
-There are separate geofences for opening the garage and closing it. This is to facilitate closing the garage more immediately when leaving, but opening it sooner so it's already open when you arrive. This is useful due to delays in receiving positional data from the Tesla API. The recommendation is to set a larger value for `open_radius` and a smaller one for `close_radius`, but this is up to you.
-
-### Run as a Service
-This is only relevant for the [Portable App](#portable-app) installation, which has been deprecated.
-
-You can run the portable app as a service, and there is a sample systemd service file in the root of the repo. Instructions for how to use the service file are outside the scope of this README, but there is ample documentation online.
+There are separate geofences for opening and closing a garage. This is to facilitate closing the garage more immediately when leaving, but opening it sooner so it's already open when you arrive. This is useful due to delays in receiving positional data from the Tesla API. The recommendation is to set a larger value for `open_radius` and a smaller one for `close_radius`, but this is up to you.
 
 ### Supported Environment Variables
 The following environment variables are supported:
@@ -102,8 +96,9 @@ MYQ_EMAIL=<string> # this can be set instead of setting these values in the conf
 MYQ_PASS=<string> # this can be set instead of setting these values in the config.yml file
 DEBUG=<bool> # prints more verbose messages
 TESTING=<bool> # will not actually operate the garage door
+TZ=<string> # sets the timezone for the docker container
 ```
 
-## Known Issues
-* ~~Currently this only works with one vehicle. It is set up to work with multiple, but it hangs when receiving broker messages from MQTT for some reason. I haven't yet had time to dig into this.~~
-  * This should be fixed as of v0.0.3
+## Credits
+* [TeslaMate](https://github.com/adriankumpf/teslamate)
+* [MyQ API Go Package](https://github.com/joeshaw/myq)

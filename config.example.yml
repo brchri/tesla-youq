@@ -1,22 +1,27 @@
+# In this config example, there are two garage doors we wish to control that are connected to the same account.
+# The first garage door houses 2 Tesla vehicles, while the second garage door houses a third Tesla vehicle.
+# Anytime a garage door is operated by this app, it will wait the configured 5 minutes "cooldown" before allowing
+# further operations on that specific garage door.
+
 global:
-  mqtt_host: localhost
+  mqtt_host: localhost # dns, container name, or IP of teslamate's mqtt host
   mqtt_port: 1883
-  mqtt_client_id: myq-teslamate-geofence
+  mqtt_client_id: tesla-youq # arbitrary client name for MQTT connection; must not be the same as any other MQTT client name
   cooldown: 5 # minutes to wait after operating garage before allowing another garage operation
-  myq_email: myq@example.com # can also be passed as env var MYQ_EMAIL
-  myq_pass: super_secret_password # can also be passed as env var MYQ_PASS
+  myq_email: myq@example.com # email to auth to myq account; can also be passed as env var MYQ_EMAIL
+  myq_pass: super_secret_password # password to auth to myq account; can also be passed as env var MYQ_PASS
 
 garage_doors:
   - &main_door
-    location:
+    location: # defines the latitude and longitude of the garage door location, which will be the center of the geofence radius
       lat: 48.858195
       lng: 2.294689
-    close_radius: .03503 # distance in kilometers car must travel away from garage location to close garage door, should be <= open_radius
-    open_radius: .23138 # distance in kilometers car must be in range of garage location to open garage door, should be >= close_radius
-    myq_serial: myq_serial_1
+    close_radius: .03503 # distance in kilometers car must travel away from garage location to close garage door
+    open_radius: .23138 # distance in kilometers car must be in range of garage location to open garage door
+    myq_serial: myq_serial_1 # serial number of garage door opener; see README for more info
     cars:
-      - teslamage_car_id: 1
-      - teslamate_car_id: 2
+      - teslamage_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
+      - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
   - <<: *main_door # will inherit all properties defined in the first garage_door, with overrides listed below
     location:
       lat: 48.858197

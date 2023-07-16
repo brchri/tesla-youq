@@ -5,10 +5,10 @@ ARG BUILD_VERSION
 RUN test -n "${BUILD_VERSION}" || (echo "Build argument BUILD_VERSION is required but not provided" && exit 1)
 
 WORKDIR /app
-COPY . /app
+COPY . ./
 
 RUN go test ./...
-RUN go build -ldflags="-X main.version=${BUILD_VERSION}" -o myq-teslamate-geofence cmd/app/main.go
+RUN go build -ldflags="-X main.version=${BUILD_VERSION}" -o tesla-youq cmd/app/main.go
 
 FROM alpine:3.18
 
@@ -23,10 +23,10 @@ RUN apk add --no-cache bash tzdata && \
     adduser --uid $USER_UID --ingroup nonroot --system --shell bin/bash nonroot && \
     chown -R nonroot:nonroot /app
 
-COPY --from=builder --chown=nonroot:nonroot --chmod=755 /app/myq-teslamate-geofence /app/config.example.yml /app/
+COPY --from=builder --chown=nonroot:nonroot --chmod=755 /app/tesla-youq /app/config.example.yml /app/
 
 ENV PATH="/app:${PATH}"
 
 USER nonroot
 
-CMD [ "/app/myq-teslamate-geofence", "-c", "/app/config/config.yml" ]
+CMD [ "/app/tesla-youq", "-c", "/app/config/config.yml" ]
