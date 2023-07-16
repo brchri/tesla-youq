@@ -28,9 +28,8 @@ There is now a docker image available and will be the only supported release typ
 docker run \
   -e MYQ_EMAIL=my_email@address.com \ # optional, can also be saved in the config.yml file
   -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
+  -e TZ=America/New_York \ # optional, sets timezone for container
   -v /etc/myq-teslamate-geofence/config.yml:/app/config/config.yml:ro \ # required, config file volume
-  -v /etc/timezone:/etc/timezone:ro \ # optional, timezone file to set timezone based on host machine
-  -v /etc/localtime:/etc/localtime:ro \ # optional, localtime file to set time based on host machine
   brchri/myq-teslamate-geofence:0.1.0
 ```
 
@@ -46,10 +45,9 @@ services:
     environment:
       - MYQ_EMAIL=my_email@address.com # optional, can also be saved in the config.yml file
       - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
+      - TZ=America/New_York # optional, sets timezone for container
     volumes:
       - /etc/myq-teslamate-geofence/config.yml:/app/config/config.yml:ro # required, config file volume
-      - /etc/timezone:/etc/timezone:ro # timezone file to set timezone based on host machine
-      - /etc/localtime:/etc/localtime:ro # localtime file to set time based on host machine
     restart: unless-stopped
 ```
 

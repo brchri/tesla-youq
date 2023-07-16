@@ -18,7 +18,7 @@ ARG USER_GID=$USER_UID
 VOLUME [ "/app/config" ]
 WORKDIR /app
 
-RUN apk add --no-cache bash && \
+RUN apk add --no-cache bash tzdata && \
     addgroup --gid $USER_GID nonroot && \
     adduser --uid $USER_UID --ingroup nonroot --system --shell bin/bash nonroot && \
     chown -R nonroot:nonroot /app
