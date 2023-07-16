@@ -38,6 +38,7 @@ jobs:
           context: .
           push: false
           load: true
+          build-args: BUILD_VERSION=${{ github.sha }}
           tags: ${{ env.TEST_TAG }}
 
       - name: Test
