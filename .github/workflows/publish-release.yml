@@ -73,11 +73,16 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          load: true
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.output.labels }}
           tags: ${{ steps.meta.output.tags }}
           build-args: BUILD_VERSION=${{ env.BUILD_VERSION }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Test
+        run: |
+          docker run --rm ${{ format('{0}:{1}', env.REGISTRY_IMAGE, steps.meta.outputs.version) }} /app/tesla-youq -v
 
       - name: Export digest
         run: |
