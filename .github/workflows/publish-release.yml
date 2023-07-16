@@ -63,4 +63,4 @@ jobs:
           build-args: BUILD_VERSION=${{ env.BUILD_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.BUILD_VERSION }}
-            ${{ env.TAG_LATEST == 'true' && env.IMAGE_NAME+':latest' || '' }}
+            ${{ env.TAG_LATEST == 'true' && format('{0}:{1}', env.IMAGE_NAME, 'latest') || '' }}
