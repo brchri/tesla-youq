@@ -13,8 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	geo "myq-teslamate-geofence/internal/geo"
-	util "myq-teslamate-geofence/internal/util"
+	geo "github.com/brchri/tesla-youq/internal/geo"
+
+	util "github.com/brchri/tesla-youq/internal/util"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )

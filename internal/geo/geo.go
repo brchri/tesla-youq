@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 	"math"
-	util "myq-teslamate-geofence/internal/util"
 	"os"
 	"time"
+
+	util "github.com/brchri/tesla-youq/internal/util"
 
 	"github.com/joeshaw/myq"
 )

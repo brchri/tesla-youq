@@ -2,11 +2,12 @@ package geo
 
 import (
 	"fmt"
-	util "myq-teslamate-geofence/internal/util"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
+
+	util "github.com/brchri/tesla-youq/internal/util"
 )
 
 type MockMyqSession struct{}
