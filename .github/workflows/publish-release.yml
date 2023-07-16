@@ -18,22 +18,14 @@ on:
 
 jobs:
   build-and-push:
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - platform: 'linux/amd64'
-            runs_on: 'ubuntu-latest'
-          - platform: 'linux/arm64'
-            runs_on: 'buildjet-2vcpu-ubuntu-2204-arm'
-          - platform: 'linux/arm/v7'
-            runs_on: 'buildjet-2vcpu-ubuntu-2204-arm'
-
-    runs-on: ${{ matrix.runs_on }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -66,7 +58,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           build-args: BUILD_VERSION=${{ env.BUILD_VERSION }}
           tags: |
