@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	geo "github.com/brchri/tesla-youq/internal/geo"
+	"github.com/google/uuid"
 
 	util "github.com/brchri/tesla-youq/internal/util"
 
@@ -25,8 +27,8 @@ var (
 	configFile string
 	GetDevices bool
 	GetVersion bool
-	cars       []*util.Car           // list of all cars from all garage doors
-	version    string      = "0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
+	cars       []*util.Car            // list of all cars from all garage doors
+	version    string      = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
 )
 
 func init() {
@@ -56,7 +58,7 @@ func parseArgs() {
 	flag.Parse()
 
 	if GetVersion {
-		versionInfo := filepath.Base(os.Args[0]) + " v" + version + " " + runtime.GOOS + "/" + runtime.GOARCH
+		versionInfo := filepath.Base(os.Args[0]) + " " + version + " " + runtime.GOOS + "/" + runtime.GOARCH
 		fmt.Println(versionInfo)
 		os.Exit(0)
 	}
@@ -95,11 +97,27 @@ func main() {
 	// create a new MQTT client
 	opts := mqtt.NewClientOptions()
 	opts.SetOrderMatters(false)
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", util.Config.Global.MqttHost, util.Config.Global.MqttPort))
 	opts.SetKeepAlive(30 * time.Second)
 	opts.SetPingTimeout(10 * time.Second)
 	opts.SetAutoReconnect(true)
-	opts.SetClientID(util.Config.Global.MqttClientID)
+	opts.SetUsername(util.Config.Global.MqttUser) // if not defined, will just set empty strings and won't be used by pkg
+	opts.SetPassword(util.Config.Global.MqttPass) // if not defined, will just set empty strings and won't be used by pkg
+
+	// set conditional MQTT client opts
+	if util.Config.Global.MqttClientID != "" {
+		opts.SetClientID(util.Config.Global.MqttClientID)
+	} else {
+		// generate UUID for mqtt client connection if not specified in config file
+		opts.SetClientID(uuid.New().String())
+	}
+	mqttProtocol := "tcp"
+	if util.Config.Global.MqttUseTls {
+		opts.SetTLSConfig(&tls.Config{
+			InsecureSkipVerify: util.Config.Global.MqttSkipTlsVerify,
+		})
+		mqttProtocol = "ssl"
+	}
+	opts.AddBroker(fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.MqttHost, util.Config.Global.MqttPort))
 
 	// create a new MQTT client object
 	client := mqtt.NewClient(opts)
@@ -188,5 +206,11 @@ func checkEnvVars() {
 	}
 	if util.Config.Global.MyQEmail == "" || util.Config.Global.MyQPass == "" {
 		log.Fatal("MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
+	}
+	if value, exists := os.LookupEnv("MQTT_USER"); exists {
+		util.Config.Global.MqttUser = value
+	}
+	if value, exists := os.LookupEnv("MQTT_PASS"); exists {
+		util.Config.Global.MqttPass = value
 	}
 }
