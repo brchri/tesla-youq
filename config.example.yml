@@ -6,7 +6,7 @@
 global:
   mqtt_host: localhost # dns, container name, or IP of teslamate's mqtt host
   mqtt_port: 1883
-  mqtt_client_id: tesla-youq # arbitrary client name for MQTT connection; must not be the same as any other MQTT client name
+  mqtt_client_id: tesla-youq # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
   mqtt_user: mqtt_user # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_USER
   mqtt_pass: mqtt_pass # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_PASS
   mqtt_use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
