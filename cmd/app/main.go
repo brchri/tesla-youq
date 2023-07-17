@@ -110,15 +110,14 @@ func main() {
 		// generate UUID for mqtt client connection if not specified in config file
 		opts.SetClientID(uuid.New().String())
 	}
+	mqttProtocol := "tcp"
 	if util.Config.Global.MqttUseTls {
-		tlsConfig := &tls.Config{
+		opts.SetTLSConfig(&tls.Config{
 			InsecureSkipVerify: util.Config.Global.MqttSkipTlsVerify,
-		}
-		opts.SetTLSConfig(tlsConfig)
-		opts.AddBroker(fmt.Sprintf("ssl://%s:%d", util.Config.Global.MqttHost, util.Config.Global.MqttPort))
-	} else {
-		opts.AddBroker(fmt.Sprintf("tcp://%s:%d", util.Config.Global.MqttHost, util.Config.Global.MqttPort))
+		})
+		mqttProtocol = "ssl"
 	}
+	opts.AddBroker(fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.MqttHost, util.Config.Global.MqttPort))
 
 	// create a new MQTT client object
 	client := mqtt.NewClient(opts)
