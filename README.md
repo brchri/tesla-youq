@@ -10,7 +10,7 @@ A lightweight app that will operate your MyQ connected garage doors based on the
     - [Portable App](#portable-app)
   - [Notes](#notes)
     - [Serials](#serials)
-    - [Geofences](#geofences)
+    - [Geofence Radii](#geofence-radii)
     - [Supported Environment Variables](#supported-environment-variables)
   - [Credits](#credits)
 
@@ -29,7 +29,7 @@ docker run \
   -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
   -e TZ=America/New_York \ # optional, sets timezone for container
   -v /etc/tesla-youq/config.yml:/app/config/config.yml:ro \ # required, config file volume
-  brchri/tesla-youq:0.1.1
+  brchri/tesla-youq:latest
 ```
 
 Or you can use a docker compose file like this:
@@ -39,7 +39,7 @@ version: '3.8'
 services:
 
   tesla-youq:
-    image: brchri/tesla-youq:0.1.1
+    image: brchri/tesla-youq:latest
     container_name: tesla-youq
     environment:
       - MYQ_EMAIL=my_email@address.com # optional, can also be saved in the config.yml file
@@ -77,7 +77,7 @@ Docker image:
 docker run --rm \
   -e MYQ_EMAIL=myq@example.com \
   -e MYQ_PASS=supersecretpass \
-  brchri/tesla-youq:0.1.1 \
+  brchri/tesla-youq:latest \
   tesla-youq -d
 ```
 
@@ -85,20 +85,21 @@ Portable app:
 
 `MYQ_EMAIL=myq@example.com MYQ_PASS=supersecretpass tesla-youq -d`
 
-### Geofences
-There are separate geofences for opening and closing a garage. This is to facilitate closing the garage more immediately when leaving, but opening it sooner so it's already open when you arrive. This is useful due to delays in receiving positional data from the Tesla API. The recommendation is to set a larger value for `open_radius` and a smaller one for `close_radius`, but this is up to you.
+### Geofence Radii
+There are separate geofence radii for opening and closing a garage. This is to facilitate closing the garage more immediately when leaving, but opening it sooner so it's already open when you arrive. This is useful due to delays in receiving positional data from the Tesla API. The recommendation is to set a larger value for `open_radius` and a smaller one for `close_radius`, but this is up to you.
 
 ### Supported Environment Variables
-| Variable Name | Type | Description | Default |
-| ------------- | ---- | ----------- | ------- |
-| CONFIG_FILE | path (string) | Path to config file within container | `/app/config/config.yml` |
-| MYQ_EMAIL | string | Email to authenticate to MyQ account. Can be used instead of setting in `config.yml` file | `''` |
-| MYQ_PASS | string | Password to authenticate to MyQ account. Can be used instead of setting in `config.yml` file | `''` |
-| MQTT_USER | string | User to authenticate to MQTT broker. Can be used instead of setting in `config.yml` file | `''` |
-| MQTT_PASS | string | Password to authenticate to MQTT broker. Can be used instead of setting in `config.yml` file | `''` |
-| DEBUG | bool | Increases output verbosity | `false` |
-| TESTING | bool | Will perform all functions *except* actually operating garage door, and will just output operation *would've* happened | `false` |
-| TZ | string | Sets timezone for container | `Etc/UTC` |
+The following Docker environment variables are supported but not required.
+| Variable Name | Type | Description |
+| ------------- | ---- | ----------- |
+| `CONFIG_FILE` | String (Filepath) | Path to config file within container |
+| `MYQ_EMAIL` | String | Email to authenticate to MyQ account. Can be used instead of setting `myq_email` in the `config.yml` file |
+| `MYQ_PASS` | String | Password to authenticate to MyQ account. Can be used instead of setting `myq_pass` in the `config.yml` file |
+| `MQTT_USER` | String | User to authenticate to MQTT broker. Can be used instead of setting `mqtt_user` in the `config.yml` file |
+| `MQTT_PASS` | String | Password to authenticate to MQTT broker. Can be used instead of setting `mqtt_pass` in the `config.yml` file |
+| `DEBUG` | Bool | Increases output verbosity |
+| `TESTING` | Bool | Will perform all functions *except* actually operating garage door, and will just output operation *would've* happened |
+| `TZ` | String | Sets timezone for container |
 
 ## Credits
 * [TeslaMate](https://github.com/adriankumpf/teslamate)
