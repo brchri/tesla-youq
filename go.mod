@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.2
+	github.com/google/uuid v1.3.0
 	github.com/joeshaw/myq v0.0.0-20221122173250-4d1216b9fc87
 	gopkg.in/yaml.v3 v3.0.1
 )

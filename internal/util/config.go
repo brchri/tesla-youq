@@ -32,12 +32,16 @@ type (
 
 	ConfigStruct struct {
 		Global struct {
-			MqttHost     string `yaml:"mqtt_host"`
-			MqttPort     int    `yaml:"mqtt_port"`
-			MqttClientID string `yaml:"mqtt_client_id"`
-			OpCooldown   int    `yaml:"cooldown"`
-			MyQEmail     string `yaml:"myq_email"`
-			MyQPass      string `yaml:"myq_pass"`
+			MqttHost          string `yaml:"mqtt_host"`
+			MqttPort          int    `yaml:"mqtt_port"`
+			MqttClientID      string `yaml:"mqtt_client_id"`
+			MqttUser          string `yaml:"mqtt_user"`
+			MqttPass          string `yaml:"mqtt_pass"`
+			MqttUseTls        bool   `yaml:"mqtt_use_tls"`
+			MqttSkipTlsVerify bool   `yaml:"mqtt_skip_tls_verify"`
+			OpCooldown        int    `yaml:"cooldown"`
+			MyQEmail          string `yaml:"myq_email"`
+			MyQPass           string `yaml:"myq_pass"`
 		} `yaml:"global"`
 		GarageDoors []*GarageDoor `yaml:"garage_doors"`
 		Testing     bool

@@ -89,15 +89,16 @@ Portable app:
 There are separate geofences for opening and closing a garage. This is to facilitate closing the garage more immediately when leaving, but opening it sooner so it's already open when you arrive. This is useful due to delays in receiving positional data from the Tesla API. The recommendation is to set a larger value for `open_radius` and a smaller one for `close_radius`, but this is up to you.
 
 ### Supported Environment Variables
-The following environment variables are supported:
-```bash
-CONFIG_FILE=<path> # path to config file, can be used instead of -c flag
-MYQ_EMAIL=<string> # this can be set instead of setting these values in the config.yml file
-MYQ_PASS=<string> # this can be set instead of setting these values in the config.yml file
-DEBUG=<bool> # prints more verbose messages
-TESTING=<bool> # will not actually operate the garage door
-TZ=<string> # sets the timezone for the docker container
-```
+| Variable Name | Type | Description | Default |
+| ------------- | ---- | ----------- | ------- |
+| CONFIG_FILE | path (string) | Path to config file within container | `/app/config/config.yml` |
+| MYQ_EMAIL | string | Email to authenticate to MyQ account. Can be used instead of setting in `config.yml` file | `''` |
+| MYQ_PASS | string | Password to authenticate to MyQ account. Can be used instead of setting in `config.yml` file | `''` |
+| MQTT_USER | string | User to authenticate to MQTT broker. Can be used instead of setting in `config.yml` file | `''` |
+| MQTT_PASS | string | Password to authenticate to MQTT broker. Can be used instead of setting in `config.yml` file | `''` |
+| DEBUG | bool | Increases output verbosity | `false` |
+| TESTING | bool | Will perform all functions *except* actually operating garage door, and will just output operation *would've* happened | `false` |
+| TZ | string | Sets timezone for container | `Etc/UTC` |
 
 ## Credits
 * [TeslaMate](https://github.com/adriankumpf/teslamate)

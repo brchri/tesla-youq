@@ -52,22 +52,20 @@ jobs:
         shell: bash
         if: github.event_name == 'push'
         run: |
-          echo "BUILD_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          echo "TAG_LATEST=true" >> $GITHUB_ENV
+          echo "BUILD_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
       
       - name: Set version from workflow dispatch
         shell: bash
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "BUILD_VERSION=${{ github.event.inputs.tagVersion }}" >> $GITHUB_ENV
-          echo "TAG_LATEST=${{ github.event.inputs.tagLatest }}" >> $GITHUB_ENV
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY_IMAGE }}
-          labels: org.opencontainers.image.version=v${{ env.BUILD_VERSION }}
+          labels: org.opencontainers.image.version=${{ env.BUILD_VERSION }}
 
       - name: Build and push by digest
         id: build
@@ -117,8 +115,11 @@ jobs:
         shell: bash
         if: github.event_name == 'push'
         run: |
-          echo "BUILD_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          echo "TAG_LATEST=true" >> $GITHUB_ENV
+          BUILD_VERSION=${GITHUB_REF#refs/tags/}
+          echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_ENV
+          # only tag latest if BUILD_VERSION is a proper semver, not a nightly/release-candidate/etc
+          semverPattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          echo "TAG_LATEST=$([[ $BUILD_VERSION =~ $semverPattern ]] && echo true || echo false)" >> $GITHUB_ENV
       
       - name: Set version from workflow dispatch
         shell: bash
