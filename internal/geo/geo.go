@@ -73,26 +73,12 @@ func toRadians(degrees float64) float64 {
 // check if outside close geo or inside open geo and set garage door state accordingly
 func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 
-	if car.CurLat == 0 || car.CurLng == 0 {
-		return // need valid lat and lng to check fence
-	}
-
-	// Define a carLocation to check
-	carLocation := util.Point{
-		Lat: car.CurLat,
-		Lng: car.CurLng,
-	}
-
-	// update car's current distance, and store the previous distance in a variable
-	prevDistance := car.CurDistance
-	car.CurDistance = distance(carLocation, car.GarageDoor.Location)
-
-	// check if car has crossed a geofence and set an appropriate action
+	// get action based on either geo cross events or distance threshold cross events
 	var action string
-	if prevDistance <= car.GarageDoor.CloseRadius && car.CurDistance > car.GarageDoor.CloseRadius { // car was within close geofence, but now beyond it (car left geofence)
-		action = myq.ActionClose
-	} else if prevDistance >= car.GarageDoor.OpenRadius && car.CurDistance < car.GarageDoor.OpenRadius { // car was outside of open geofence, but is now within it (car entered geofence)
-		action = myq.ActionOpen
+	if car.GarageDoor.UseTeslmateGeofence {
+		action = getGeoChangeEventAction(config, car)
+	} else {
+		action = getDistanceChangeAction(config, car)
 	}
 
 	if action == "" || car.GarageDoor.OpLock {
@@ -117,6 +103,47 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 
 	time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
 	car.GarageDoor.OpLock = false                                     // release garage door's operation lock
+}
+
+// gets action based on if there was a relevant distance change
+func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) string {
+	if car.CurLat == 0 || car.CurLng == 0 {
+		return "" // need valid lat and lng to check fence
+	}
+
+	// Define a carLocation to check
+	carLocation := util.Point{
+		Lat: car.CurLat,
+		Lng: car.CurLng,
+	}
+
+	// update car's current distance, and store the previous distance in a variable
+	prevDistance := car.CurDistance
+	car.CurDistance = distance(carLocation, car.GarageDoor.Location)
+
+	// check if car has crossed a geofence and set an appropriate action
+	var action string
+	if prevDistance <= car.GarageDoor.CloseRadius && car.CurDistance > car.GarageDoor.CloseRadius { // car was within close geofence, but now beyond it (car left geofence)
+		action = myq.ActionClose
+	} else if prevDistance >= car.GarageDoor.OpenRadius && car.CurDistance < car.GarageDoor.OpenRadius { // car was outside of open geofence, but is now within it (car entered geofence)
+		action = myq.ActionOpen
+	}
+	return action
+}
+
+// gets action based on if there was a relevant geofence event change
+func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
+	var action string
+	if car.PrevGeofence == car.GarageDoor.TriggerCloseGeofence.From &&
+		car.CurGeofence == car.GarageDoor.TriggerCloseGeofence.To {
+		action = "close"
+	} else if car.PrevGeofence == car.GarageDoor.TriggerOpenGeofence.From &&
+		car.CurGeofence == car.GarageDoor.TriggerOpenGeofence.To {
+		action = "open"
+	}
+	car.PrevGeofence = car.CurGeofence
+	car.CurGeofence = ""
+	return action
 }
 
 func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string) error {
