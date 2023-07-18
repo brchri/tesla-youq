@@ -12,6 +12,8 @@ A lightweight app that will operate your MyQ connected garage doors based on the
   - [Notes](#notes)
     - [Serials](#serials)
     - [Geofence Radii](#geofence-radii)
+    - [Custom Geofence vs TeslaMate Geofence](#custom-geofence-vs-teslamate-geofence)
+    - [Triggers](#triggers)
   - [Credits](#credits)
 
 <!-- /TOC -->
@@ -100,6 +102,14 @@ Portable app:
 
 ### Geofence Radii
 There are separate geofence radii for opening and closing a garage. This is to facilitate closing the garage more immediately when leaving, but opening it sooner so it's already open when you arrive. This is useful due to delays in receiving positional data from the Tesla API. The recommendation is to set a larger value for `open_radius` and a smaller one for `close_radius`, but this is up to you.
+
+### Custom Geofence vs TeslaMate Geofence
+As of `v0.1.2`, you can either define your own geofence triggers in the `config.yml` file (using `location`, `close_radius`, and `open_radius` parameters), or you can reference the geofences that can be created directly through the TeslaMate web UI (using `trigger_close_geofence` and `trigger_open_geofence` parameters). However, it should be noted that if using the Geofences defined in the TeslaMate web UI, Tesla-YouQ will subscribe to the Geofence topic for updates to trigger garage door actions. This topic does not appear to be updated in realtime, but rather in a polling manner, which can cause significant delays in updates that trigger a garage close action. It also does not (currently) allow for overlapping geofence definitions. It is therefore recommended to define your own geofences in the `config.yml` file rather than relying on TeslaMate's geofencing feature. See [this PR](https://github.com/brchri/tesla-youq/pull/12) for more detailed observations.
+
+### Triggers
+Tesla-YouQ allows you to define separate geofence radii for open and close triggers. This means that there can be an overlap where, for example, you're leaving home and cross the "close door" threshold, which shares a space with the "open door" zone for when you return, as the "open door" zone is larger since you want the garage to start opening sooner so it's ready when you arrive. To account for this and remove the possibility of flapping, The close door event will only trigger when you go from *inside* the "close door" geofence and move *outside* it, indicating you are moving away from the garage. Conversely, the open door event will only trigger when you go from *outside* the "open door" geofence and move *inside* it.
+
+There is also a configurable "operation cooldown" property in the `global` section of the `config.yml` file, which will prevent any operations against a recently operated door until the number of minutes specified has passed. This can be set to 0 if you don't want any operation cooldown.
 
 ## Credits
 * [TeslaMate](https://github.com/adriankumpf/teslamate)
