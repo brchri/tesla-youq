@@ -27,10 +27,10 @@ garage_doors:
       - teslamage_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
   - # 3rd car garage
-    trigger_close_geofence:
+    trigger_close_geofence: # this method is not yet fully released, but is available for preview in v0.1.2-rc1; please use location, close_radius, and open_radius for latest full release versions
       from: home
       to: close_to_home
-    trigger_open_geofence:
+    trigger_open_geofence: # this method is not yet fully released, but is available for preview in v0.1.2-rc1; please use location, close_radius, and open_radius for latest full release versions
       from: not_home
       to: close_to_home
     myq_serial: myq_serial_2 # serial number of garage door opener; see README for more info
