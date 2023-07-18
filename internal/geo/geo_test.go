@@ -17,6 +17,8 @@ type testParamsStruct struct {
 	loginCount        int
 	deviceStateCount  int
 	setDoorStateCount int
+	openActionCount   int
+	closeActionCount  int
 }
 
 var (
@@ -27,8 +29,11 @@ var (
 	loginError             error
 	setDoorStateError      error
 
-	car        *util.Car
-	garageDoor *util.GarageDoor
+	distanceCar        *util.Car
+	distanceGarageDoor *util.GarageDoor
+
+	geofenceGarageDoor *util.GarageDoor
+	geofenceCar        *util.Car
 )
 
 func (m *MockMyqSession) SetUsername(s string) {
@@ -51,6 +56,11 @@ func (m *MockMyqSession) Login() error {
 
 func (m *MockMyqSession) SetDoorState(serialNumber, action string) error {
 	testParams.setDoorStateCount++
+	if action == "open" {
+		testParams.openActionCount++
+	} else if action == "close" {
+		testParams.closeActionCount++
+	}
 	return setDoorStateError
 }
 
@@ -58,28 +68,37 @@ func (m *MockMyqSession) New() {}
 
 func init() {
 	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
-	garageDoor = util.Config.GarageDoors[0]
-	car = garageDoor.Cars[0]
-	car.GarageDoor = garageDoor
+
+	// used for testing events based on distance
+	distanceGarageDoor = util.Config.GarageDoors[0]
+	distanceCar = distanceGarageDoor.Cars[0]
+	distanceCar.GarageDoor = distanceGarageDoor
+
+	// used for testing events based on geofence changes
+	geofenceGarageDoor = util.Config.GarageDoors[1]
+	geofenceCar = geofenceGarageDoor.Cars[0]
+	geofenceCar.GarageDoor = geofenceGarageDoor
+	geofenceCar.GarageDoor.UseTeslmateGeofence = true
+
 	util.Config.Global.OpCooldown = 0
 	myqExec = &MockMyqSession{}
 }
 
-func Test_CheckGeoFence_Leaving(t *testing.T) {
+func Test_CheckGeoFence_DistanceTrigger_Leaving(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// TEST 1 - Leaving home, garage close
-	car.CurDistance = 0
+	distanceCar.CurDistance = 0
 	testParams = &testParamsStruct{}
-	car.CurLat = garageDoor.Location.Lat + 10
-	car.CurLng = garageDoor.Location.Lng
+	distanceCar.CurLat = distanceGarageDoor.Location.Lat + 10
+	distanceCar.CurLng = distanceGarageDoor.Location.Lng
 
 	deviceStateReturnValue = "open"
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		CheckGeoFence(util.Config, car)
+		CheckGeoFence(util.Config, distanceCar)
 	}()
 	// wait for SetGarageDoor call and then update call
 	for {
@@ -101,17 +120,17 @@ func Test_CheckGeoFence_Leaving(t *testing.T) {
 	}
 }
 
-func Test_CheckGeofence_LeaveRetry(t *testing.T) {
+func Test_CheckGeofence_DistanceTrigger_LeaveRetry(t *testing.T) {
 	// TEST 2 - Leaving home, garage close, fail and retry 3 times
-	car.CurDistance = 0
+	distanceCar.CurDistance = 0
 	testParams = &testParamsStruct{}
-	car.CurLat = garageDoor.Location.Lat + 10
-	car.CurLng = garageDoor.Location.Lng
+	distanceCar.CurLat = distanceGarageDoor.Location.Lat + 10
+	distanceCar.CurLng = distanceGarageDoor.Location.Lng
 
 	deviceStateReturnValue = "open"
 	setDoorStateError = fmt.Errorf("mock error")
 
-	CheckGeoFence(util.Config, car)
+	CheckGeoFence(util.Config, distanceCar)
 
 	want := []int{3, 3, 3, 3}
 	got := []int{testParams.setUsernameCount,
@@ -125,12 +144,12 @@ func Test_CheckGeofence_LeaveRetry(t *testing.T) {
 	}
 }
 
-func Test_CheckGeofence_Arrive(t *testing.T) {
+func Test_CheckGeofence_DistanceTrigger_Arrive(t *testing.T) {
 	// TEST 3 - Arriving Home
-	car.CurDistance = 1
+	distanceCar.CurDistance = 1
 	testParams = &testParamsStruct{}
-	car.CurLat = garageDoor.Location.Lat
-	car.CurLng = garageDoor.Location.Lng
+	distanceCar.CurLat = distanceGarageDoor.Location.Lat
+	distanceCar.CurLng = distanceGarageDoor.Location.Lng
 	var wg sync.WaitGroup
 
 	deviceStateReturnValue = "closed"
@@ -139,7 +158,7 @@ func Test_CheckGeofence_Arrive(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		CheckGeoFence(util.Config, car)
+		CheckGeoFence(util.Config, distanceCar)
 	}()
 	// wait for SetGarageDoor call and then update call
 	for {
@@ -159,5 +178,255 @@ func Test_CheckGeofence_Arrive(t *testing.T) {
 
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("Test 3 failed, got %v, want %v", got, want)
+	}
+}
+
+func Test_CheckGeofence_DistanceTrigger_Leave_Then_Arrive(t *testing.T) {
+	distanceCar.CurDistance = 0
+	distanceCar.CurLat = distanceCar.GarageDoor.Location.Lat + 1
+	distanceCar.CurLng = distanceCar.GarageDoor.Location.Lng
+	testParams = &testParamsStruct{}
+	var wg sync.WaitGroup
+
+	deviceStateReturnValue = "open"
+	deviceStateReturnError = nil
+	setDoorStateError = nil
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, distanceCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 0 {
+			deviceStateReturnValue = "closed"
+			break
+		}
+	}
+	wg.Wait()
+
+	// check garage would've been closed
+	want := []int{1, 1, 1, 1, 1}
+	got := []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.closeActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
+	}
+
+	distanceCar.CurLat = distanceCar.CurLat + 1
+	prevDistance := distanceCar.CurDistance
+	CheckGeoFence(util.Config, distanceCar) // should return no-op but will update geofenceCar.PrevGeofence
+	if prevDistance == distanceCar.CurDistance {
+		t.Errorf("update CurDistance failed")
+	}
+
+	distanceCar.CurLat = distanceCar.GarageDoor.Location.Lat
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, distanceCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 1 {
+			deviceStateReturnValue = "open"
+			break
+		}
+	}
+	wg.Wait()
+
+	// check garage would've been opened
+	want = []int{2, 2, 2, 2, 1}
+	got = []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.openActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("arrive function call counts failed, got %v, want %v", got, want)
+	}
+}
+
+func Test_CheckGeoFence_GeofenceTrigger_Leaving(t *testing.T) {
+	var wg sync.WaitGroup
+
+	// TEST 1 - Leaving home, garage close
+	geofenceCar.PrevGeofence = "home"
+	geofenceCar.CurGeofence = "close_to_home"
+	testParams = &testParamsStruct{}
+
+	deviceStateReturnValue = "open"
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, geofenceCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 0 {
+			deviceStateReturnValue = "closed"
+			break
+		}
+	}
+	wg.Wait()
+	want := []int{1, 1, 1, 1}
+	got := []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Test 1 failed, got %v, want %v", got, want)
+	}
+}
+
+func Test_CheckGeofence_GeofenceTrigger_Arrive(t *testing.T) {
+	geofenceCar.PrevGeofence = "not_home"
+	geofenceCar.CurGeofence = "close_to_home"
+	testParams = &testParamsStruct{}
+	var wg sync.WaitGroup
+
+	deviceStateReturnValue = "closed"
+	deviceStateReturnError = nil
+	setDoorStateError = nil
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, geofenceCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 0 {
+			deviceStateReturnValue = "open"
+			break
+		}
+	}
+	wg.Wait()
+
+	want := []int{1, 1, 1, 1}
+	got := []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Test 3 failed, got %v, want %v", got, want)
+	}
+}
+
+func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
+	// car is leaving
+	geofenceCar.PrevGeofence = "home"
+	geofenceCar.CurGeofence = "close_to_home"
+	testParams = &testParamsStruct{}
+	var wg sync.WaitGroup
+
+	deviceStateReturnValue = "open"
+	deviceStateReturnError = nil
+	setDoorStateError = nil
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, geofenceCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 0 {
+			deviceStateReturnValue = "closed"
+			break
+		}
+	}
+	wg.Wait()
+
+	// check garage would've been closed
+	want := []int{1, 1, 1, 1, 1}
+	got := []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.closeActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
+	}
+
+	// car has moved far away, outside of all defined geofences
+	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
+	geofenceCar.CurGeofence = "not_home"
+	CheckGeoFence(util.Config, geofenceCar)
+
+	// check no new ops on garage
+	want = []int{1, 1, 1, 1, 1}
+	got = []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.closeActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
+	}
+
+	// car is now close to home
+	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
+	geofenceCar.CurGeofence = "close_to_home"
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, geofenceCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 1 {
+			deviceStateReturnValue = "open"
+			break
+		}
+	}
+	wg.Wait()
+
+	// check garage would've been opened
+	want = []int{2, 2, 2, 2, 1}
+	got = []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.openActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("arrive function call counts failed, got %v, want %v", got, want)
+	}
+
+	// car is home
+	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
+	geofenceCar.CurGeofence = "home"
+	CheckGeoFence(util.Config, geofenceCar)
+
+	// check no new ops on garage
+	want = []int{2, 2, 2, 2, 1}
+	got = []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.closeActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
 	}
 }

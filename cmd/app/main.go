@@ -133,9 +133,20 @@ func main() {
 
 	// create channels to receive messages
 	for _, car := range cars {
-		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.ID)
+		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
 
-		for _, topic := range []string{"geofence", "latitude", "longitude"} {
+		topics := make([]string, 0)
+		if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
+			car.GarageDoor.UseTeslmateGeofence = true
+			topics = append(topics, "geofence")
+		} else if car.GarageDoor.Location.IsPointDefined() {
+			topics = append(topics, "latitude", "longitude")
+			car.GarageDoor.UseTeslmateGeofence = false
+		} else {
+			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
+		}
+
+		for _, topic := range topics {
 			if token := client.Subscribe(
 				fmt.Sprintf("teslamate/cars/%d/%s", car.ID, topic),
 				0,
@@ -170,7 +181,10 @@ func main() {
 			// if lat or lng received, check geofence
 			switch m[3] {
 			case "geofence":
-				log.Printf("Received geo for car %d: %v", car.ID, string(message.Payload()))
+				car.PrevGeofence = car.CurGeofence
+				car.CurGeofence = string(message.Payload())
+				log.Printf("Received geo for car %d: %v", car.ID, car.CurGeofence)
+				go geo.CheckGeoFence(util.Config, car)
 			case "latitude":
 				if debug {
 					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))

@@ -16,7 +16,7 @@ global:
   myq_pass: super_secret_password # password to auth to myq account; can also be passed as env var MYQ_PASS
 
 garage_doors:
-  - &main_door
+  - # main garage
     location: # defines the latitude and longitude of the garage door location, which will be the center of the geofence radius
       lat: 48.858195
       lng: 2.294689
@@ -26,10 +26,13 @@ garage_doors:
     cars:
       - teslamage_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
-  - <<: *main_door # will inherit all properties defined in the first garage_door, with overrides listed below
-    location:
-      lat: 48.858197
-      lng: 2.294689
-    myq_serial: myq_serial_2
+  - # 3rd car garage
+    trigger_close_geofence: # this method is not yet fully released, but is available for preview in v0.1.2-rc1; please use location, close_radius, and open_radius for latest full release versions
+      from: home
+      to: close_to_home
+    trigger_open_geofence: # this method is not yet fully released, but is available for preview in v0.1.2-rc1; please use location, close_radius, and open_radius for latest full release versions
+      from: not_home
+      to: close_to_home
+    myq_serial: myq_serial_2 # serial number of garage door opener; see README for more info
     cars:
-      - teslamate_car_id: 3
+      - teslamage_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker

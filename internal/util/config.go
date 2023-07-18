@@ -13,21 +13,35 @@ type (
 		Lng float64 `yaml:"lng"`
 	}
 
-	Car struct {
-		ID          int `yaml:"teslamate_car_id"`
-		GarageDoor  *GarageDoor
-		CurLat      float64
-		CurLng      float64
-		CurDistance float64
+	// defines which geofence change will trigger an event, e.g. "home" to "not_home"
+	GeofenceTrigger struct {
+		From string `yaml:"from"`
+		To   string `yaml:"to"`
 	}
 
+	Car struct {
+		ID           int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
+		GarageDoor   *GarageDoor // bidirectional pointer to GarageDoor containing car
+		CurLat       float64     // current latitude
+		CurLng       float64     // current longitude
+		CurDistance  float64     // current distance from garagedoor location
+		PrevGeofence string      // geofence previously ascribed to car
+		CurGeofence  string      // updated geofence ascribed to car when published to mqtt
+	}
+
+	// defines a garage door with either a location and open/close radii, OR trigger open/close geofences
+	// {Location,CloseRadius,OpenRadius} set is mutually exclusive with {TriggerCloseGeofence,TriggerOpenGeofence}
+	// with preference for {TriggerCloseGeofence,TriggerOpenGeofence} set if both are defined
 	GarageDoor struct {
-		Location    Point   `yaml:"location"`
-		CloseRadius float64 `yaml:"close_radius"`
-		OpenRadius  float64 `yaml:"open_radius"`
-		MyQSerial   string  `yaml:"myq_serial"`
-		Cars        []*Car  `yaml:"cars"`
-		OpLock      bool
+		Location             Point           `yaml:"location"`
+		CloseRadius          float64         `yaml:"close_radius"`           // distance when leaving to trigger close event
+		OpenRadius           float64         `yaml:"open_radius"`            // distance when arriving to trigger open event
+		TriggerCloseGeofence GeofenceTrigger `yaml:"trigger_close_geofence"` // geofence cross event to trigger close
+		TriggerOpenGeofence  GeofenceTrigger `yaml:"trigger_open_geofence"`  // geofence cross event to trigger open
+		MyQSerial            string          `yaml:"myq_serial"`
+		Cars                 []*Car          `yaml:"cars"` // cars housed within this garage
+		OpLock               bool            // controls if garagedoor has been operated recently to prevent flapping
+		UseTeslmateGeofence  bool            //indicates whether garage door uses teslamate's geofence or not (checked during runtime)
 	}
 
 	ConfigStruct struct {
@@ -49,6 +63,15 @@ type (
 )
 
 var Config ConfigStruct
+
+func (g GeofenceTrigger) IsGeofenceDefined() bool {
+	return g.From != "" && g.To != ""
+}
+
+func (p Point) IsPointDefined() bool {
+	// lat=0 lng=0 are valid coordinates, but they're in the middle of the ocean, so safe to assume these mean undefined
+	return p.Lat != 0 && p.Lng != 0
+}
 
 // load yaml config
 func LoadConfig(configFile string) {
