@@ -133,7 +133,7 @@ func main() {
 
 	// create channels to receive messages
 	for _, car := range cars {
-		log.Printf("Subscribing to MQTT geofence, latitude, and longitude topics for car %d", car.ID)
+		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
 
 		topics := make([]string, 0)
 		if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
@@ -182,6 +182,7 @@ func main() {
 			switch m[3] {
 			case "geofence":
 				log.Printf("Received geo for car %d: %v", car.ID, string(message.Payload()))
+				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
 				go geo.CheckGeoFence(util.Config, car)
 			case "latitude":

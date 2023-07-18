@@ -327,6 +327,7 @@ func Test_CheckGeofence_GeofenceTrigger_Arrive(t *testing.T) {
 }
 
 func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
+	// car is leaving
 	geofenceCar.PrevGeofence = "home"
 	geofenceCar.CurGeofence = "close_to_home"
 	testParams = &testParamsStruct{}
@@ -363,12 +364,26 @@ func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
 		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
 	}
 
+	// car has moved far away, outside of all defined geofences
+	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
 	geofenceCar.CurGeofence = "not_home"
-	CheckGeoFence(util.Config, geofenceCar) // should return no-op but will update geofenceCar.PrevGeofence
-	if geofenceCar.PrevGeofence != "not_home" {
-		t.Errorf("update PrevGeofence failed, got %s, want %s", geofenceCar.PrevGeofence, "not_home")
+	CheckGeoFence(util.Config, geofenceCar)
+
+	// check no new ops on garage
+	want = []int{1, 1, 1, 1, 1}
+	got = []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.closeActionCount,
 	}
 
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
+	}
+
+	// car is now close to home
+	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
 	geofenceCar.CurGeofence = "close_to_home"
 	wg.Add(1)
 	go func() {
@@ -395,5 +410,23 @@ func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
 
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("arrive function call counts failed, got %v, want %v", got, want)
+	}
+
+	// car is home
+	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
+	geofenceCar.CurGeofence = "home"
+	CheckGeoFence(util.Config, geofenceCar)
+
+	// check no new ops on garage
+	want = []int{2, 2, 2, 2, 1}
+	got = []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+		testParams.closeActionCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
 	}
 }

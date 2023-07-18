@@ -141,8 +141,6 @@ func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
 		car.CurGeofence == car.GarageDoor.TriggerOpenGeofence.To {
 		action = "open"
 	}
-	car.PrevGeofence = car.CurGeofence
-	car.CurGeofence = ""
 	return action
 }
 
