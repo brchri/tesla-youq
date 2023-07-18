@@ -181,9 +181,9 @@ func main() {
 			// if lat or lng received, check geofence
 			switch m[3] {
 			case "geofence":
-				log.Printf("Received geo for car %d: %v", car.ID, string(message.Payload()))
 				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
+				log.Printf("Received geo for car %d: %v", car.ID, car.CurGeofence)
 				go geo.CheckGeoFence(util.Config, car)
 			case "latitude":
 				if debug {
