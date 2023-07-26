@@ -23,20 +23,17 @@ import (
 )
 
 var (
-	debug      bool
-	configFile string
-	GetDevices bool
-	GetVersion bool
-	cars       []*util.Car            // list of all cars from all garage doors
-	version    string      = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
+	debug       bool
+	configFile  string
+	cars        []*util.Car                  // list of all cars from all garage doors
+	version     string            = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
+	messageChan chan mqtt.Message            // channel to receive mqtt messages
 )
 
 func init() {
 	log.SetOutput(os.Stdout)
 	parseArgs()
-	if !GetDevices {
-		util.LoadConfig(configFile)
-	}
+	util.LoadConfig(configFile)
 	checkEnvVars()
 	for _, garageDoor := range util.Config.GarageDoors {
 		for _, car := range garageDoor.Cars {
@@ -49,22 +46,24 @@ func init() {
 // parse args
 func parseArgs() {
 	// set up flags for parsing args
+	var getDevices bool
+	var getVersion bool
 	flag.StringVar(&configFile, "config", "", "location of config file")
 	flag.StringVar(&configFile, "c", "", "location of config file")
 	flag.BoolVar(&util.Config.Testing, "testing", false, "test case")
-	flag.BoolVar(&GetDevices, "d", false, "get myq devices")
-	flag.BoolVar(&GetVersion, "v", false, "print version info and return")
-	flag.BoolVar(&GetVersion, "version", false, "print version info and return")
+	flag.BoolVar(&getDevices, "d", false, "get myq devices")
+	flag.BoolVar(&getVersion, "v", false, "print version info and return")
+	flag.BoolVar(&getVersion, "version", false, "print version info and return")
 	flag.Parse()
 
-	if GetVersion {
+	if getVersion {
 		versionInfo := filepath.Base(os.Args[0]) + " " + version + " " + runtime.GOOS + "/" + runtime.GOARCH
 		fmt.Println(versionInfo)
 		os.Exit(0)
 	}
 
 	// only check for config if not getting devices
-	if !GetDevices {
+	if !getDevices {
 		// if -c or --config wasn't passed, check for CONFIG_FILE env var
 		// if that fails, check for file at default location
 		if configFile == "" {
@@ -78,14 +77,14 @@ func parseArgs() {
 		if _, err := os.Stat(configFile); err != nil {
 			log.Fatalf("Config file %v doesn't exist!", configFile)
 		}
+	} else {
+		// if -d flag passed, get devices and exit
+		geo.GetGarageDoorSerials(util.Config)
+		os.Exit(0)
 	}
 }
 
 func main() {
-	if GetDevices {
-		geo.GetGarageDoorSerials(util.Config)
-		return
-	}
 	if value, exists := os.LookupEnv("TESTING"); exists {
 		util.Config.Testing, _ = strconv.ParseBool(value)
 	}
@@ -93,6 +92,8 @@ func main() {
 		debug, _ = strconv.ParseBool(value)
 	}
 	fmt.Println()
+
+	messageChan = make(chan mqtt.Message)
 
 	// create a new MQTT client
 	opts := mqtt.NewClientOptions()
@@ -102,6 +103,7 @@ func main() {
 	opts.SetAutoReconnect(true)
 	opts.SetUsername(util.Config.Global.MqttUser) // if not defined, will just set empty strings and won't be used by pkg
 	opts.SetPassword(util.Config.Global.MqttPass) // if not defined, will just set empty strings and won't be used by pkg
+	opts.OnConnect = onMqttConnect
 
 	// set conditional MQTT client opts
 	if util.Config.Global.MqttClientID != "" {
@@ -128,37 +130,6 @@ func main() {
 	} else {
 		log.Println("Connected to MQTT broker")
 	}
-
-	messageChan := make(chan mqtt.Message)
-
-	// create channels to receive messages
-	for _, car := range cars {
-		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
-
-		topics := make([]string, 0)
-		if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
-			car.GarageDoor.UseTeslmateGeofence = true
-			topics = append(topics, "geofence")
-		} else if car.GarageDoor.Location.IsPointDefined() {
-			topics = append(topics, "latitude", "longitude")
-			car.GarageDoor.UseTeslmateGeofence = false
-		} else {
-			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
-		}
-
-		for _, topic := range topics {
-			if token := client.Subscribe(
-				fmt.Sprintf("teslamate/cars/%d/%s", car.ID, topic),
-				0,
-				func(client mqtt.Client, message mqtt.Message) {
-					messageChan <- message
-				}); token.Wait() && token.Error() != nil {
-				log.Fatalf("%v", token.Error())
-			}
-		}
-	}
-
-	log.Println("Topics subscribed, listening for events...")
 
 	// listen for incoming messages
 	signalChannel := make(chan os.Signal, 1)
@@ -207,6 +178,51 @@ func main() {
 
 		}
 	}
+}
+
+// subscribe to topics when MQTT client connects (or reconnects)
+func onMqttConnect(client mqtt.Client) {
+	for _, car := range cars {
+		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
+
+		// define which topics are relevant for each car based on config
+		topics := make([]string, 0)
+		if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
+			car.GarageDoor.UseTeslmateGeofence = true
+			topics = append(topics, "geofence")
+		} else if car.GarageDoor.Location.IsPointDefined() {
+			topics = append(topics, "latitude", "longitude")
+			car.GarageDoor.UseTeslmateGeofence = false
+		} else {
+			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
+		}
+
+		// subscribe to topics
+		for _, topic := range topics {
+			topicSubscribed := false
+			var tokenError error
+			// retry topic subscription attempts with 1 sec delay between attempts
+			for retryAttempts := 5; retryAttempts > 0; retryAttempts-- {
+				if token := client.Subscribe(
+					fmt.Sprintf("teslamate/cars/%d/%s", car.ID, topic),
+					0,
+					func(client mqtt.Client, message mqtt.Message) {
+						messageChan <- message
+					}); token.Wait() && token.Error() == nil {
+					topicSubscribed = true
+					break
+				} else {
+					tokenError = token.Error()
+				}
+				time.Sleep(1 * time.Second)
+			}
+			if !topicSubscribed {
+				log.Fatalf("Failed to subscribe to %s for car %d after 5 retry attempts, received error %v", topic, car.ID, tokenError)
+			}
+		}
+	}
+
+	log.Println("Topics subscribed, listening for events...")
 }
 
 // check for env vars and validate that a myq_email and myq_pass exists
