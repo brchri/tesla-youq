@@ -200,7 +200,6 @@ func onMqttConnect(client mqtt.Client) {
 		// subscribe to topics
 		for _, topic := range topics {
 			topicSubscribed := false
-			var tokenError error
 			// retry topic subscription attempts with 1 sec delay between attempts
 			for retryAttempts := 5; retryAttempts > 0; retryAttempts-- {
 				if token := client.Subscribe(
@@ -212,12 +211,12 @@ func onMqttConnect(client mqtt.Client) {
 					topicSubscribed = true
 					break
 				} else {
-					tokenError = token.Error()
+					log.Printf("Failed to subscribe to topic %s for car %d, will make %d more attempts. Error: %v", topic, car.ID, retryAttempts, token.Error())
 				}
-				time.Sleep(1 * time.Second)
+				time.Sleep(5 * time.Second)
 			}
 			if !topicSubscribed {
-				log.Fatalf("Failed to subscribe to %s for car %d after 5 retry attempts, received error %v", topic, car.ID, tokenError)
+				log.Fatalf("Unable to subscribe to topics, exiting")
 			}
 		}
 	}
