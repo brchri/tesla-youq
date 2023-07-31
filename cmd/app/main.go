@@ -40,6 +40,7 @@ func init() {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
 			car.InsideCloseGeo = true
+			car.InsideOpenGeo = true
 		}
 	}
 }
