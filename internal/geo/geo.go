@@ -159,7 +159,7 @@ func centroid(points []util.Point) util.Point {
 }
 
 // sort polygon geofence clockwise to ensure a simple geofence type
-func sortPointsClockwise(points []util.Point) {
+func SortPointsClockwise(points []util.Point) {
 	center := centroid(points)
 	sort.Slice(points, func(i, j int) bool {
 		return math.Atan2(points[i].Lat-center.Lat, points[i].Lng-center.Lng) <
@@ -176,7 +176,7 @@ func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) str
 	}
 
 	geofence := car.GarageDoor.PolygonGeofence
-	sortPointsClockwise(geofence)
+	SortPointsClockwise(geofence)
 	p := util.Point{Lat: car.CurLat, Lng: car.CurLng}
 	var intersections int
 	j := len(geofence) - 1

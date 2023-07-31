@@ -94,6 +94,19 @@ func main() {
 	}
 	fmt.Println()
 
+	for _, car := range cars {
+		if car.GarageDoor.IsPolygonGeofenceDefined() {
+			car.GarageDoor.GeofenceType = util.PolygonGeofence
+			geo.SortPointsClockwise(car.GarageDoor.PolygonGeofence) // sort points to ensure simple polygon
+		} else if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
+			car.GarageDoor.GeofenceType = util.TeslamateGeofence
+		} else if car.GarageDoor.Location.IsPointDefined() {
+			car.GarageDoor.GeofenceType = util.DistanceGeofence
+		} else {
+			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
+		}
+	}
+
 	messageChan = make(chan mqtt.Message)
 
 	// create a new MQTT client
@@ -188,17 +201,13 @@ func onMqttConnect(client mqtt.Client) {
 
 		// define which topics are relevant for each car based on config
 		var topics []string
-		if car.GarageDoor.IsPolygonGeofenceDefined() {
-			car.GarageDoor.GeofenceType = util.PolygonGeofence
+		switch car.GarageDoor.GeofenceType {
+		case util.PolygonGeofence:
 			topics = []string{"latitude", "longitude"}
-		} else if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
-			car.GarageDoor.GeofenceType = util.TeslamateGeofence
+		case util.DistanceGeofence:
+			topics = []string{"latitude", "longitude"}
+		case util.TeslamateGeofence:
 			topics = []string{"geofence"}
-		} else if car.GarageDoor.Location.IsPointDefined() {
-			topics = []string{"latitude", "longitude"}
-			car.GarageDoor.GeofenceType = util.DistanceGeofence
-		} else {
-			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
 		}
 
 		// subscribe to topics
