@@ -20,13 +20,14 @@ type (
 	}
 
 	Car struct {
-		ID           int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
-		GarageDoor   *GarageDoor // bidirectional pointer to GarageDoor containing car
-		CurLat       float64     // current latitude
-		CurLng       float64     // current longitude
-		CurDistance  float64     // current distance from garagedoor location
-		PrevGeofence string      // geofence previously ascribed to car
-		CurGeofence  string      // updated geofence ascribed to car when published to mqtt
+		ID                 int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
+		GarageDoor         *GarageDoor // bidirectional pointer to GarageDoor containing car
+		CurLat             float64     // current latitude
+		CurLng             float64     // current longitude
+		CurDistance        float64     // current distance from garagedoor location
+		PrevGeofence       string      // geofence previously ascribed to car
+		CurGeofence        string      // updated geofence ascribed to car when published to mqtt
+		IsInsidePolygonGeo bool        // tracks whether we're in a polygon geofence
 	}
 
 	// defines a garage door with either a location and open/close radii, OR trigger open/close geofences
@@ -38,10 +39,11 @@ type (
 		OpenRadius           float64         `yaml:"open_radius"`            // distance when arriving to trigger open event
 		TriggerCloseGeofence GeofenceTrigger `yaml:"trigger_close_geofence"` // geofence cross event to trigger close
 		TriggerOpenGeofence  GeofenceTrigger `yaml:"trigger_open_geofence"`  // geofence cross event to trigger open
+		PolygonGeofence      []Point         `yaml:"polygon_geofence"`
 		MyQSerial            string          `yaml:"myq_serial"`
 		Cars                 []*Car          `yaml:"cars"` // cars housed within this garage
 		OpLock               bool            // controls if garagedoor has been operated recently to prevent flapping
-		UseTeslmateGeofence  bool            //indicates whether garage door uses teslamate's geofence or not (checked during runtime)
+		GeofenceType         string          //indicates whether garage door uses teslamate's geofence or not (checked during runtime)
 	}
 
 	ConfigStruct struct {
@@ -64,8 +66,18 @@ type (
 
 var Config ConfigStruct
 
+const (
+	PolygonGeofence   = "PolygonGeofence"   // custom polygon geofence defined by multiple lat/long points
+	DistanceGeofence  = "DistanceGeofence"  // circle geofence with center point and radius
+	TeslamateGeofence = "TeslamateGeofence" // geofence defined in teslamate
+)
+
 func (g GeofenceTrigger) IsGeofenceDefined() bool {
 	return g.From != "" && g.To != ""
+}
+
+func (g GarageDoor) IsPolygonGeofenceDefined() bool {
+	return len(g.PolygonGeofence) > 0
 }
 
 func (p Point) IsPointDefined() bool {

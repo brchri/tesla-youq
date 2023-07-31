@@ -38,3 +38,16 @@ garage_doors:
     myq_serial: myq_serial_2 # serial number of garage door opener; see README for more info
     cars:
       - teslamage_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
+  - # 4th car detached garage
+    polygon_geofence: # custom defined polygonal geofence
+      - lat: 48.8580729
+        lng: 2.2924089
+      - lat: 48.8553411
+        lng: 2.296679
+      - lat: 48.8585317
+        lng: 2.2964001
+      - lat: 48.8580729
+        lng: 2.2924089
+    myq_serial: myq_serial_3 # serial number of garage door opener; see README for more info
+    cars:
+      - teslamage_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker

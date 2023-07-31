@@ -34,6 +34,9 @@ var (
 
 	geofenceGarageDoor *util.GarageDoor
 	geofenceCar        *util.Car
+
+	polygonGarageDoor *util.GarageDoor
+	polygonCar        *util.Car
 )
 
 func (m *MockMyqSession) SetUsername(s string) {
@@ -73,12 +76,19 @@ func init() {
 	distanceGarageDoor = util.Config.GarageDoors[0]
 	distanceCar = distanceGarageDoor.Cars[0]
 	distanceCar.GarageDoor = distanceGarageDoor
+	distanceCar.GarageDoor.GeofenceType = util.DistanceGeofence
 
-	// used for testing events based on geofence changes
+	// used for testing events based on teslamate geofence changes
 	geofenceGarageDoor = util.Config.GarageDoors[1]
 	geofenceCar = geofenceGarageDoor.Cars[0]
 	geofenceCar.GarageDoor = geofenceGarageDoor
-	geofenceCar.GarageDoor.UseTeslmateGeofence = true
+	geofenceCar.GarageDoor.GeofenceType = util.TeslamateGeofence
+
+	// used for testing events based on teslamate geofence changes
+	polygonGarageDoor = util.Config.GarageDoors[2]
+	polygonCar = polygonGarageDoor.Cars[0]
+	polygonCar.GarageDoor = polygonGarageDoor
+	polygonCar.GarageDoor.GeofenceType = util.PolygonGeofence
 
 	util.Config.Global.OpCooldown = 0
 	myqExec = &MockMyqSession{}
@@ -428,5 +438,77 @@ func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
 
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("leave function call counts failed, got %v, want %v", got, want)
+	}
+}
+
+func Test_CheckPolyGeoFence_GeofenceTrigger_Leaving(t *testing.T) {
+	var wg sync.WaitGroup
+
+	// Leaving home, garage close
+	polygonCar.IsInsidePolygonGeo = true
+	polygonCar.CurLat = 48.854253
+	polygonCar.CurLng = 2.305468
+	testParams = &testParamsStruct{}
+
+	deviceStateReturnValue = "open"
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, polygonCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 0 {
+			deviceStateReturnValue = "closed"
+			break
+		}
+	}
+	wg.Wait()
+	want := []int{1, 1, 1, 1}
+	got := []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Test 1 failed, got %v, want %v", got, want)
+	}
+}
+
+func Test_CheckPolyGeoFence_GeofenceTrigger_Arriving(t *testing.T) {
+	var wg sync.WaitGroup
+
+	// Arriving home, garage open
+	polygonCar.IsInsidePolygonGeo = false
+	polygonCar.CurLat = 48.8576458
+	polygonCar.CurLng = 2.2949946
+	testParams = &testParamsStruct{}
+
+	deviceStateReturnValue = "closed"
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		CheckGeoFence(util.Config, polygonCar)
+	}()
+	// wait for SetGarageDoor call and then update call
+	for {
+		if testParams.setDoorStateCount > 0 {
+			deviceStateReturnValue = "open"
+			break
+		}
+	}
+	wg.Wait()
+	want := []int{1, 1, 1, 1}
+	got := []int{testParams.setUsernameCount,
+		testParams.setPasswordCount,
+		testParams.loginCount,
+		testParams.setDoorStateCount,
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("Test 1 failed, got %v, want %v", got, want)
 	}
 }

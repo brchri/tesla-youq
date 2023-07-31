@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"time"
 
 	util "github.com/brchri/tesla-youq/internal/util"
@@ -75,10 +76,13 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 
 	// get action based on either geo cross events or distance threshold cross events
 	var action string
-	if car.GarageDoor.UseTeslmateGeofence {
+	switch car.GarageDoor.GeofenceType {
+	case util.TeslamateGeofence:
 		action = getGeoChangeEventAction(config, car)
-	} else {
+	case util.DistanceGeofence:
 		action = getDistanceChangeAction(config, car)
+	case util.PolygonGeofence:
+		action = getPolygonGeoChangeEventAction(config, car)
 	}
 
 	if action == "" || car.GarageDoor.OpLock {
@@ -141,6 +145,61 @@ func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
 		car.CurGeofence == car.GarageDoor.TriggerOpenGeofence.To {
 		action = "open"
 	}
+	return action
+}
+
+// get center of polygon geofence
+func centroid(points []util.Point) util.Point {
+	var sumLat, sumLng float64
+	for _, p := range points {
+		sumLat += p.Lat
+		sumLng += p.Lng
+	}
+	return util.Point{Lat: sumLat / float64(len(points)), Lng: sumLng / float64(len(points))}
+}
+
+// sort polygon geofence clockwise to ensure a simple geofence type
+func sortPointsClockwise(points []util.Point) {
+	center := centroid(points)
+	sort.Slice(points, func(i, j int) bool {
+		return math.Atan2(points[i].Lat-center.Lat, points[i].Lng-center.Lng) <
+			math.Atan2(points[j].Lat-center.Lat, points[j].Lng-center.Lng)
+	})
+}
+
+// get action based on whether we had a polygon geofence change event
+// uses ray-casting algorithm, assumes a simple geofence (no holes or border cross points)
+func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
+	var action string
+	if car.CurLat == 0 || car.CurLng == 0 {
+		return "" // need valid lat and long to check geofence
+	}
+
+	geofence := car.GarageDoor.PolygonGeofence
+	sortPointsClockwise(geofence)
+	p := util.Point{Lat: car.CurLat, Lng: car.CurLng}
+	var intersections int
+	j := len(geofence) - 1
+
+	for i := 0; i < len(geofence); i++ {
+		if ((geofence[i].Lat > p.Lat) != (geofence[j].Lat > p.Lat)) &&
+			p.Lng < (geofence[j].Lng-geofence[i].Lng)*(p.Lat-geofence[i].Lat)/(geofence[j].Lat-geofence[i].Lat)+geofence[i].Lng {
+			intersections++
+		}
+		j = i
+	}
+
+	isInside := intersections%2 == 1 // are we currently inside a polygon geo
+
+	//
+	if !car.IsInsidePolygonGeo && isInside {
+		action = "open"
+	} else if car.IsInsidePolygonGeo && !isInside {
+		action = "close"
+	}
+
+	car.IsInsidePolygonGeo = isInside
+
 	return action
 }
 

@@ -39,6 +39,7 @@ func init() {
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
+			car.IsInsidePolygonGeo = true // default to within geofence for polygon, even if polygon not used
 		}
 	}
 }
@@ -186,13 +187,16 @@ func onMqttConnect(client mqtt.Client) {
 		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
 
 		// define which topics are relevant for each car based on config
-		topics := make([]string, 0)
-		if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
-			car.GarageDoor.UseTeslmateGeofence = true
-			topics = append(topics, "geofence")
+		var topics []string
+		if car.GarageDoor.IsPolygonGeofenceDefined() {
+			car.GarageDoor.GeofenceType = util.PolygonGeofence
+			topics = []string{"latitude", "longitude"}
+		} else if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
+			car.GarageDoor.GeofenceType = util.TeslamateGeofence
+			topics = []string{"geofence"}
 		} else if car.GarageDoor.Location.IsPointDefined() {
-			topics = append(topics, "latitude", "longitude")
-			car.GarageDoor.UseTeslmateGeofence = false
+			topics = []string{"latitude", "longitude"}
+			car.GarageDoor.GeofenceType = util.DistanceGeofence
 		} else {
 			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
 		}
