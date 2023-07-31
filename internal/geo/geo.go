@@ -175,9 +175,23 @@ func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) str
 		return "" // need valid lat and long to check geofence
 	}
 
-	geofence := car.GarageDoor.PolygonGeofence
-	SortPointsClockwise(geofence)
 	p := util.Point{Lat: car.CurLat, Lng: car.CurLng}
+	isInsideCloseGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonCloseGeofence)
+	isInsideOpenGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonOpenGeofence)
+
+	if car.InsideCloseGeo && !isInsideCloseGeo { // if we were inside the close geofence and now we're not, then close
+		action = "close"
+	} else if !car.InsideOpenGeo && isInsideOpenGeo { // if we were not inside the open geo and now we are, then open
+		action = "open"
+	}
+
+	car.InsideCloseGeo = isInsideCloseGeo
+	car.InsideOpenGeo = isInsideOpenGeo
+
+	return action
+}
+
+func isInsidePolygonGeo(p util.Point, geofence []util.Point) bool {
 	var intersections int
 	j := len(geofence) - 1
 
@@ -189,18 +203,7 @@ func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) str
 		j = i
 	}
 
-	isInside := intersections%2 == 1 // are we currently inside a polygon geo
-
-	//
-	if !car.IsInsidePolygonGeo && isInside {
-		action = "open"
-	} else if car.IsInsidePolygonGeo && !isInside {
-		action = "close"
-	}
-
-	car.IsInsidePolygonGeo = isInside
-
-	return action
+	return intersections%2 == 1 // are we currently inside a polygon geo
 }
 
 func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string) error {

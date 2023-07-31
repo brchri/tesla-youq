@@ -39,7 +39,7 @@ func init() {
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
-			car.IsInsidePolygonGeo = true // default to within geofence for polygon, even if polygon not used
+			car.InsideCloseGeo = true
 		}
 	}
 }
@@ -97,7 +97,8 @@ func main() {
 	for _, car := range cars {
 		if car.GarageDoor.IsPolygonGeofenceDefined() {
 			car.GarageDoor.GeofenceType = util.PolygonGeofence
-			geo.SortPointsClockwise(car.GarageDoor.PolygonGeofence) // sort points to ensure simple polygon
+			geo.SortPointsClockwise(car.GarageDoor.PolygonOpenGeofence) // sort points to ensure simple polygon
+			geo.SortPointsClockwise(car.GarageDoor.PolygonCloseGeofence)
 		} else if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
 			car.GarageDoor.GeofenceType = util.TeslamateGeofence
 		} else if car.GarageDoor.Location.IsPointDefined() {

@@ -20,14 +20,15 @@ type (
 	}
 
 	Car struct {
-		ID                 int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
-		GarageDoor         *GarageDoor // bidirectional pointer to GarageDoor containing car
-		CurLat             float64     // current latitude
-		CurLng             float64     // current longitude
-		CurDistance        float64     // current distance from garagedoor location
-		PrevGeofence       string      // geofence previously ascribed to car
-		CurGeofence        string      // updated geofence ascribed to car when published to mqtt
-		IsInsidePolygonGeo bool        // tracks whether we're in a polygon geofence
+		ID             int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
+		GarageDoor     *GarageDoor // bidirectional pointer to GarageDoor containing car
+		CurLat         float64     // current latitude
+		CurLng         float64     // current longitude
+		CurDistance    float64     // current distance from garagedoor location
+		PrevGeofence   string      // geofence previously ascribed to car
+		CurGeofence    string      // updated geofence ascribed to car when published to mqtt
+		InsideOpenGeo  bool
+		InsideCloseGeo bool
 	}
 
 	// defines a garage door with either a location and open/close radii, OR trigger open/close geofences
@@ -37,9 +38,10 @@ type (
 		Location             Point           `yaml:"location"`
 		CloseRadius          float64         `yaml:"close_radius"`           // distance when leaving to trigger close event
 		OpenRadius           float64         `yaml:"open_radius"`            // distance when arriving to trigger open event
-		TriggerCloseGeofence GeofenceTrigger `yaml:"trigger_close_geofence"` // geofence cross event to trigger close
-		TriggerOpenGeofence  GeofenceTrigger `yaml:"trigger_open_geofence"`  // geofence cross event to trigger open
-		PolygonGeofence      []Point         `yaml:"polygon_geofence"`
+		TriggerCloseGeofence GeofenceTrigger `yaml:"trigger_close_geofence"` // teslamate geofence cross event to trigger close
+		TriggerOpenGeofence  GeofenceTrigger `yaml:"trigger_open_geofence"`  // teslamate geofence cross event to trigger open
+		PolygonCloseGeofence []Point         `yaml:"polygon_close_geofence"` // custom polygon geofence to trigger close action
+		PolygonOpenGeofence  []Point         `yaml:"polygon_open_geofence"`  // custom polygon geofence to trigger open action
 		MyQSerial            string          `yaml:"myq_serial"`
 		Cars                 []*Car          `yaml:"cars"` // cars housed within this garage
 		OpLock               bool            // controls if garagedoor has been operated recently to prevent flapping
@@ -77,7 +79,7 @@ func (g GeofenceTrigger) IsGeofenceDefined() bool {
 }
 
 func (g GarageDoor) IsPolygonGeofenceDefined() bool {
-	return len(g.PolygonGeofence) > 0
+	return len(g.PolygonCloseGeofence) > 0 && len(g.PolygonOpenGeofence) > 0
 }
 
 func (p Point) IsPointDefined() bool {
