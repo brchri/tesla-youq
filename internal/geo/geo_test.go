@@ -76,19 +76,19 @@ func init() {
 	distanceGarageDoor = util.Config.GarageDoors[0]
 	distanceCar = distanceGarageDoor.Cars[0]
 	distanceCar.GarageDoor = distanceGarageDoor
-	distanceCar.GarageDoor.GeofenceType = util.DistanceGeofence
+	distanceCar.GarageDoor.GeofenceType = util.CircularGeofenceType
 
 	// used for testing events based on teslamate geofence changes
 	geofenceGarageDoor = util.Config.GarageDoors[1]
 	geofenceCar = geofenceGarageDoor.Cars[0]
 	geofenceCar.GarageDoor = geofenceGarageDoor
-	geofenceCar.GarageDoor.GeofenceType = util.TeslamateGeofence
+	geofenceCar.GarageDoor.GeofenceType = util.TeslamateGeofenceType
 
 	// used for testing events based on teslamate geofence changes
 	polygonGarageDoor = util.Config.GarageDoors[2]
 	polygonCar = polygonGarageDoor.Cars[0]
 	polygonCar.GarageDoor = polygonGarageDoor
-	polygonCar.GarageDoor.GeofenceType = util.PolygonGeofence
+	polygonCar.GarageDoor.GeofenceType = util.PolygonGeofenceType
 
 	util.Config.Global.OpCooldown = 0
 	myqExec = &MockMyqSession{}
@@ -100,8 +100,8 @@ func Test_CheckGeoFence_DistanceTrigger_Leaving(t *testing.T) {
 	// TEST 1 - Leaving home, garage close
 	distanceCar.CurDistance = 0
 	testParams = &testParamsStruct{}
-	distanceCar.CurLat = distanceGarageDoor.Location.Lat + 10
-	distanceCar.CurLng = distanceGarageDoor.Location.Lng
+	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	deviceStateReturnValue = "open"
 
@@ -134,8 +134,8 @@ func Test_CheckGeofence_DistanceTrigger_LeaveRetry(t *testing.T) {
 	// TEST 2 - Leaving home, garage close, fail and retry 3 times
 	distanceCar.CurDistance = 0
 	testParams = &testParamsStruct{}
-	distanceCar.CurLat = distanceGarageDoor.Location.Lat + 10
-	distanceCar.CurLng = distanceGarageDoor.Location.Lng
+	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	deviceStateReturnValue = "open"
 	setDoorStateError = fmt.Errorf("mock error")
@@ -158,8 +158,8 @@ func Test_CheckGeofence_DistanceTrigger_Arrive(t *testing.T) {
 	// TEST 3 - Arriving Home
 	distanceCar.CurDistance = 1
 	testParams = &testParamsStruct{}
-	distanceCar.CurLat = distanceGarageDoor.Location.Lat
-	distanceCar.CurLng = distanceGarageDoor.Location.Lng
+	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 	var wg sync.WaitGroup
 
 	deviceStateReturnValue = "closed"
@@ -193,8 +193,8 @@ func Test_CheckGeofence_DistanceTrigger_Arrive(t *testing.T) {
 
 func Test_CheckGeofence_DistanceTrigger_Leave_Then_Arrive(t *testing.T) {
 	distanceCar.CurDistance = 0
-	distanceCar.CurLat = distanceCar.GarageDoor.Location.Lat + 1
-	distanceCar.CurLng = distanceCar.GarageDoor.Location.Lng
+	distanceCar.CurLat = distanceCar.GarageDoor.CircularGeofence.Center.Lat + 1
+	distanceCar.CurLng = distanceCar.GarageDoor.CircularGeofence.Center.Lng
 	testParams = &testParamsStruct{}
 	var wg sync.WaitGroup
 
@@ -236,7 +236,7 @@ func Test_CheckGeofence_DistanceTrigger_Leave_Then_Arrive(t *testing.T) {
 		t.Errorf("update CurDistance failed")
 	}
 
-	distanceCar.CurLat = distanceCar.GarageDoor.Location.Lat
+	distanceCar.CurLat = distanceCar.GarageDoor.CircularGeofence.Center.Lat
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -270,7 +270,7 @@ func Test_CheckGeoFence_GeofenceTrigger_Leaving(t *testing.T) {
 
 	// TEST 1 - Leaving home, garage close
 	geofenceCar.PrevGeofence = "home"
-	geofenceCar.CurGeofence = "close_to_home"
+	geofenceCar.CurGeofence = "not_home"
 	testParams = &testParamsStruct{}
 
 	deviceStateReturnValue = "open"
@@ -302,7 +302,7 @@ func Test_CheckGeoFence_GeofenceTrigger_Leaving(t *testing.T) {
 
 func Test_CheckGeofence_GeofenceTrigger_Arrive(t *testing.T) {
 	geofenceCar.PrevGeofence = "not_home"
-	geofenceCar.CurGeofence = "close_to_home"
+	geofenceCar.CurGeofence = "home"
 	testParams = &testParamsStruct{}
 	var wg sync.WaitGroup
 
@@ -339,7 +339,7 @@ func Test_CheckGeofence_GeofenceTrigger_Arrive(t *testing.T) {
 func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
 	// car is leaving
 	geofenceCar.PrevGeofence = "home"
-	geofenceCar.CurGeofence = "close_to_home"
+	geofenceCar.CurGeofence = "not_home"
 	testParams = &testParamsStruct{}
 	var wg sync.WaitGroup
 
@@ -394,7 +394,7 @@ func Test_CheckGeofence_GeofenceTrigger_Leave_Then_Arrive(t *testing.T) {
 
 	// car is now close to home
 	geofenceCar.PrevGeofence = geofenceCar.CurGeofence
-	geofenceCar.CurGeofence = "close_to_home"
+	geofenceCar.CurGeofence = "home"
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

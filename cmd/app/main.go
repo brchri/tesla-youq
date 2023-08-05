@@ -36,6 +36,9 @@ func init() {
 	util.LoadConfig(configFile)
 	checkEnvVars()
 	for _, garageDoor := range util.Config.GarageDoors {
+		if garageDoor.GeofenceType == "" {
+			log.Fatalf("error: no supported geofences defined for garage door %v", garageDoor)
+		}
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
@@ -95,17 +98,10 @@ func main() {
 	}
 	fmt.Println()
 
-	for _, car := range cars {
-		if car.GarageDoor.IsPolygonGeofenceDefined() {
-			car.GarageDoor.GeofenceType = util.PolygonGeofence
-			geo.SortPointsClockwise(car.GarageDoor.PolygonOpenGeofence) // sort points to ensure simple polygon
-			geo.SortPointsClockwise(car.GarageDoor.PolygonCloseGeofence)
-		} else if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
-			car.GarageDoor.GeofenceType = util.TeslamateGeofence
-		} else if car.GarageDoor.Location.IsPointDefined() {
-			car.GarageDoor.GeofenceType = util.DistanceGeofence
-		} else {
-			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
+	for _, garageDoor := range util.Config.GarageDoors {
+		if garageDoor.GeofenceType == util.PolygonGeofenceType {
+			geo.SortPointsClockwise(garageDoor.PolygonGeofence.Open) // sort points to ensure simple polygon
+			geo.SortPointsClockwise(garageDoor.PolygonGeofence.Close)
 		}
 	}
 
@@ -204,11 +200,11 @@ func onMqttConnect(client mqtt.Client) {
 		// define which topics are relevant for each car based on config
 		var topics []string
 		switch car.GarageDoor.GeofenceType {
-		case util.PolygonGeofence:
+		case util.PolygonGeofenceType:
 			topics = []string{"latitude", "longitude"}
-		case util.DistanceGeofence:
+		case util.CircularGeofenceType:
 			topics = []string{"latitude", "longitude"}
-		case util.TeslamateGeofence:
+		case util.TeslamateGeofenceType:
 			topics = []string{"geofence"}
 		}
 

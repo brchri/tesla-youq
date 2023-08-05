@@ -77,11 +77,11 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 	// get action based on either geo cross events or distance threshold cross events
 	var action string
 	switch car.GarageDoor.GeofenceType {
-	case util.TeslamateGeofence:
+	case util.TeslamateGeofenceType:
 		action = getGeoChangeEventAction(config, car)
-	case util.DistanceGeofence:
+	case util.CircularGeofenceType:
 		action = getDistanceChangeAction(config, car)
-	case util.PolygonGeofence:
+	case util.PolygonGeofenceType:
 		action = getPolygonGeoChangeEventAction(config, car)
 	}
 
@@ -123,13 +123,13 @@ func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) string {
 
 	// update car's current distance, and store the previous distance in a variable
 	prevDistance := car.CurDistance
-	car.CurDistance = distance(carLocation, car.GarageDoor.Location)
+	car.CurDistance = distance(carLocation, car.GarageDoor.CircularGeofence.Center)
 
 	// check if car has crossed a geofence and set an appropriate action
 	var action string
-	if prevDistance <= car.GarageDoor.CloseRadius && car.CurDistance > car.GarageDoor.CloseRadius { // car was within close geofence, but now beyond it (car left geofence)
+	if prevDistance <= car.GarageDoor.CircularGeofence.CloseDistance && car.CurDistance > car.GarageDoor.CircularGeofence.CloseDistance { // car was within close geofence, but now beyond it (car left geofence)
 		action = myq.ActionClose
-	} else if prevDistance >= car.GarageDoor.OpenRadius && car.CurDistance < car.GarageDoor.OpenRadius { // car was outside of open geofence, but is now within it (car entered geofence)
+	} else if prevDistance >= car.GarageDoor.CircularGeofence.OpenDistance && car.CurDistance < car.GarageDoor.CircularGeofence.OpenDistance { // car was outside of open geofence, but is now within it (car entered geofence)
 		action = myq.ActionOpen
 	}
 	return action
@@ -138,11 +138,11 @@ func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) string {
 // gets action based on if there was a relevant geofence event change
 func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
 	var action string
-	if car.PrevGeofence == car.GarageDoor.TriggerCloseGeofence.From &&
-		car.CurGeofence == car.GarageDoor.TriggerCloseGeofence.To {
+	if car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Close.From &&
+		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Close.To {
 		action = "close"
-	} else if car.PrevGeofence == car.GarageDoor.TriggerOpenGeofence.From &&
-		car.CurGeofence == car.GarageDoor.TriggerOpenGeofence.To {
+	} else if car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Open.From &&
+		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Open.To {
 		action = "open"
 	}
 	return action
@@ -176,8 +176,8 @@ func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) str
 	}
 
 	p := util.Point{Lat: car.CurLat, Lng: car.CurLng}
-	isInsideCloseGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonCloseGeofence)
-	isInsideOpenGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonOpenGeofence)
+	isInsideCloseGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonGeofence.Close)
+	isInsideOpenGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonGeofence.Open)
 
 	if car.InsideCloseGeo && !isInsideCloseGeo { // if we were inside the close geofence and now we're not, then close
 		action = "close"

@@ -14,9 +14,25 @@ type (
 	}
 
 	// defines which geofence change will trigger an event, e.g. "home" to "not_home"
-	GeofenceTrigger struct {
+	TeslamateGeofenceTrigger struct {
 		From string `yaml:"from"`
 		To   string `yaml:"to"`
+	}
+
+	CircularGeofence struct {
+		Center        Point   `yaml:"center"`
+		CloseDistance float64 `yaml:"close_distance"`
+		OpenDistance  float64 `yaml:"open_distance"`
+	}
+
+	TeslamateGeofence struct {
+		Close TeslamateGeofenceTrigger `yaml:"close_trigger"`
+		Open  TeslamateGeofenceTrigger `yaml:"open_trigger"`
+	}
+
+	PolygonGeofence struct {
+		Close []Point `yaml:"close"`
+		Open  []Point `yaml:"open"`
 	}
 
 	Car struct {
@@ -35,17 +51,13 @@ type (
 	// {Location,CloseRadius,OpenRadius} set is mutually exclusive with {TriggerCloseGeofence,TriggerOpenGeofence}
 	// with preference for {TriggerCloseGeofence,TriggerOpenGeofence} set if both are defined
 	GarageDoor struct {
-		Location             Point           `yaml:"location"`
-		CloseRadius          float64         `yaml:"close_radius"`           // distance when leaving to trigger close event
-		OpenRadius           float64         `yaml:"open_radius"`            // distance when arriving to trigger open event
-		TriggerCloseGeofence GeofenceTrigger `yaml:"trigger_close_geofence"` // teslamate geofence cross event to trigger close
-		TriggerOpenGeofence  GeofenceTrigger `yaml:"trigger_open_geofence"`  // teslamate geofence cross event to trigger open
-		PolygonCloseGeofence []Point         `yaml:"polygon_close_geofence"` // custom polygon geofence to trigger close action
-		PolygonOpenGeofence  []Point         `yaml:"polygon_open_geofence"`  // custom polygon geofence to trigger open action
-		MyQSerial            string          `yaml:"myq_serial"`
-		Cars                 []*Car          `yaml:"cars"` // cars housed within this garage
-		OpLock               bool            // controls if garagedoor has been operated recently to prevent flapping
-		GeofenceType         string          //indicates whether garage door uses teslamate's geofence or not (checked during runtime)
+		CircularGeofence  CircularGeofence  `yaml:"circular_geofence"`
+		TeslamateGeofence TeslamateGeofence `yaml:"teslamate_geofence"`
+		PolygonGeofence   PolygonGeofence   `yaml:"polygon_geofence"`
+		MyQSerial         string            `yaml:"myq_serial"`
+		Cars              []*Car            `yaml:"cars"` // cars housed within this garage
+		OpLock            bool              // controls if garagedoor has been operated recently to prevent flapping
+		GeofenceType      string            //indicates whether garage door uses teslamate's geofence or not (checked during runtime)
 	}
 
 	ConfigStruct struct {
@@ -69,17 +81,26 @@ type (
 var Config ConfigStruct
 
 const (
-	PolygonGeofence   = "PolygonGeofence"   // custom polygon geofence defined by multiple lat/long points
-	DistanceGeofence  = "DistanceGeofence"  // circle geofence with center point and radius
-	TeslamateGeofence = "TeslamateGeofence" // geofence defined in teslamate
+	PolygonGeofenceType   = "PolygonGeofence"   // custom polygon geofence defined by multiple lat/long points
+	CircularGeofenceType  = "CircularGeofence"  // circle geofence with center point and radius
+	TeslamateGeofenceType = "TeslamateGeofence" // geofence defined in teslamate
 )
 
-func (g GeofenceTrigger) IsGeofenceDefined() bool {
-	return g.From != "" && g.To != ""
-}
-
-func (g GarageDoor) IsPolygonGeofenceDefined() bool {
-	return len(g.PolygonCloseGeofence) > 0 && len(g.PolygonOpenGeofence) > 0
+// checks for valid geofence values for a garage door
+// preferred priority is polygon > circle > teslamate
+func (g GarageDoor) GetGeofenceType() string {
+	if len(g.PolygonGeofence.Open) > 0 && len(g.PolygonGeofence.Close) > 0 {
+		return PolygonGeofenceType
+	} else if g.CircularGeofence.Center.IsPointDefined() && g.CircularGeofence.OpenDistance > 0 && g.CircularGeofence.CloseDistance > 0 {
+		return CircularGeofenceType
+	} else if g.TeslamateGeofence.Close.From != "" &&
+		g.TeslamateGeofence.Close.To != "" &&
+		g.TeslamateGeofence.Open.From != "" &&
+		g.TeslamateGeofence.Open.To != "" {
+		return TeslamateGeofenceType
+	} else {
+		return ""
+	}
 }
 
 func (p Point) IsPointDefined() bool {
@@ -98,5 +119,10 @@ func LoadConfig(configFile string) {
 	if err != nil {
 		log.Fatalf("Could not load yaml from config file, received error: %v", err)
 	}
+
+	for _, g := range Config.GarageDoors {
+		g.GeofenceType = g.GetGeofenceType()
+	}
+
 	log.Println("Config loaded successfully")
 }
