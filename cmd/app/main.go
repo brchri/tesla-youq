@@ -79,6 +79,7 @@ func parseArgs() {
 		}
 	} else {
 		// if -d flag passed, get devices and exit
+		checkEnvVars()
 		geo.GetGarageDoorSerials(util.Config)
 		os.Exit(0)
 	}
