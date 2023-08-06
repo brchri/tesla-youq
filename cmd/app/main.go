@@ -99,13 +99,6 @@ func main() {
 	}
 	fmt.Println()
 
-	for _, garageDoor := range util.Config.GarageDoors {
-		if garageDoor.GeofenceType == util.PolygonGeofenceType {
-			geo.SortPointsClockwise(garageDoor.PolygonGeofence.Open) // sort points to ensure simple polygon
-			geo.SortPointsClockwise(garageDoor.PolygonGeofence.Close)
-		}
-	}
-
 	messageChan = make(chan mqtt.Message)
 
 	// create a new MQTT client

@@ -70,8 +70,6 @@ The following Docker environment variables are supported but not required.
 ### Serials
 The serial displayed in your MyQ app may not be the serial used to control your door (e.g. it may be the hub rather than the opener). You can run this app with the `-d` flag to list your device serials and pick the appropriate one (listed with `type: garagedooropener`). Example:
 
-Docker image:
-
 ```shell
 docker run --rm \
   -e MYQ_EMAIL=myq@example.com \
@@ -80,28 +78,29 @@ docker run --rm \
   tesla-youq -d
 ```
 
-Portable app:
-
-`MYQ_EMAIL=myq@example.com MYQ_PASS=supersecretpass tesla-youq -d`
-
 ### Geofence Types
-You can define 3 different types of geofences to trigger garage operations. You must configure *one and only one* geofence type for each garage door. Each geofence type has separate "open" and "close" configurations (though you can set them to have the same values). This is useful for situations where you might want a smaller geofence that closes the door so you can visually confirm it's closing, but you want a larger geofence that opens the door so it will start sooner and be fully opened when you actually arrive.
+You can define 3 different types of geofences to trigger garage operations. You must configure *one and only one* geofence type for each garage door. Each geofence type has separate `open` and `close` configurations (though they can be set to the same values). This is useful for situations where you might want a smaller geofence that closes the door so you can visually confirm it's closing, but you want a larger geofence that opens the door so it will start sooner and be fully opened when you actually arrive.
 
 #### Circular Geofence
-This is the simplist geofence to configure, which is just a circular fence. You provide a latitude and longitude coordinate as the center point, and the distance from the center point to trigger the garage action (in kilometers). You can use a tool such as [free map tools](https://www.freemaptools.com/radius-around-point.htm) to determine what the center latitude and longitude coordinates are, as well as how big your want your radius to be. An example of a garage door configured with this type of geofence would look like this:
+This is the simplist geofence to configure. You provide a latitude and longitude coordinate as the center point, and the distance from the center point to trigger the garage action (in kilometers). You can use a tool such as [FreeMapTools](https://www.freemaptools.com/radius-around-point.htm) to determine what the center latitude and longitude coordinates are, as well as how big your want your radius to be. An example of a garage door configured with this type of geofence would look like this:
 
 ```yaml
 garage_doors:
   - circular_geofence:
       center:
-        lat: 48.858195
-        lng: 2.294689
-      close_distance: .03503
-      open_distance: .23138
+        lat: 46.19290425661381
+        lng: -123.79965087116439
+      close_distance: .013
+      open_distance: .04
     myq_serial: myq_serial_1
     cars:
       - teslamage_car_id: 1
 ```
+This would produce two circular geofences (open and close) that look like this:
+
+![image](https://github.com/brchri/tesla-youq/assets/126272303/5e39c4a6-d79a-46a0-895d-b926b6c27bcc)
+
+Under this configuration, your garage would start to open when you *entered* the `open_distance` area, and would start to close as you *exit* the `close_distance` area.
 
 #### TeslaMate Defined Geofence
 You can choose to use geofences defined in TeslaMate. To define these geofences, go to your TeslaMate page and click `Geo-Fences` at the top, and create a new fence (or reference your existing fences). Some notes about using TeslaMate Defined Geofences:
@@ -127,36 +126,56 @@ garage_doors:
 ```
 
 #### Polygon Geofence
-This is the most customizable method of defining a geofence, which allows you to specifically define a polygonal geofence using a list of latitude and longitude coordinates. You can use a tool like [geojson.io](https://geojson.io/) to assist with creating a geofence and providing latitude and longitude points. An example of a garage door configured with this type of geofence would look like this:
+This is the most customizable method of defining a geofence, which allows you to specifically define a polygonal geofence using a list of latitude and longitude coordinates. You can use a tool like [geojson.io](https://geojson.io/) to assist with creating a geofence and providing latitude and longitude points. **NOTE:** Using tools like this often specify longitude *before* latitude in the output, as defined by the [KML spec](https://developers.google.com/kml/documentation/kmlreference?csw=1#coordinates). Be sure you're identifying the latitude and longitude correctly.
+
+An example of a garage door configured with this type of geofence would look like this:
 
 ```yaml
 garage_doors:
   - polygon_geofence:
       open:
-        - lat: 48.8580729
-          lng: 2.2924089
-        - lat: 48.8553411
-          lng: 2.296679
-        - lat: 48.8585317
-          lng: 2.2964001
-        - lat: 48.8580729
-          lng: 2.2924089
+        - lat: 46.193245921812746
+          lng: -123.7997972320742
+        - lat: 46.193052416203386
+          lng: -123.79991877106825
+        - lat: 46.192459275200264
+          lng: -123.8000342331126
+        - lat: 46.19246067743231
+          lng: -123.8013205208015
+        - lat: 46.19241300151987
+          lng: -123.80133064905115
+        - lat: 46.192411599286004
+          lng: -123.79997751491551
+        - lat: 46.1927747765306
+          lng: -123.79954200018626
+        - lat: 46.19297669643191
+          lng: -123.79953592323656
+        - lat: 46.193245921812746
+          lng: -123.7997972320742
       close:
-        - lat: 48.8580603
-          lng: 2.2924089
-        - lat: 48.8553411
-          lng: 2.296679
-        - lat: 48.8585317
-          lng: 2.2964001
-        - lat: 48.8580729
-          lng: 2.2924089
+        - lat: 46.192958467582514
+          lng: -123.7998033090239
+        - lat: 46.19279440766502
+          lng: -123.7998033090239
+        - lat: 46.19279440766502
+          lng: -123.79950958978756
+        - lat: 46.192958467582514
+          lng: -123.79950958978756
+        - lat: 46.192958467582514
+          lng: -123.7998033090239
     myq_serial: myq_serial_1
     cars:
       - teslamage_car_id: 1
 ```
 
+This would produce two polygonal geofences (open and close) that look like this:
+
+![image](https://github.com/brchri/tesla-youq/assets/126272303/55c0eed4-3927-4678-865c-ac99e890f8bb)
+
+Under this configuration, your garage would start to open when you *entered* the `open` area, and would start to close as you *exit* the `close` area.
+
 ### Operation Cooldown
-There's a configurable `cooldown` parameter in the `config.yml` file that will allow you to specify how many minutes Tesla-YouQ should wait after operating a garage door before it attemps any further operations. This helps prevent potential flapping if that's a concern.
+There's a configurable `cooldown` parameter in the `config.yml` file's `global` section that will allow you to specify how many minutes Tesla-YouQ should wait after operating a garage door before it attemps any further operations. This helps prevent potential flapping if that's a concern.
 
 ## Credits
 * [TeslaMate](https://github.com/adriankumpf/teslamate)

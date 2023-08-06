@@ -447,8 +447,8 @@ func Test_CheckPolyGeoFence_GeofenceTrigger_Leaving(t *testing.T) {
 	// Leaving home, garage close
 	polygonCar.InsideCloseGeo = true
 	polygonCar.InsideOpenGeo = true
-	polygonCar.CurLat = 48.854253
-	polygonCar.CurLng = 2.305468
+	polygonCar.CurLat = 46.19292902096646
+	polygonCar.CurLng = -123.79984989897177
 	testParams = &testParamsStruct{}
 
 	deviceStateReturnValue = "open"
@@ -484,8 +484,8 @@ func Test_CheckPolyGeoFence_GeofenceTrigger_Arriving(t *testing.T) {
 	// Arriving home, garage open
 	polygonCar.InsideCloseGeo = false
 	polygonCar.InsideOpenGeo = false
-	polygonCar.CurLat = 48.8576458
-	polygonCar.CurLng = 2.2949946
+	polygonCar.CurLat = 46.19243683948096
+	polygonCar.CurLng = -123.80103692981524
 	testParams = &testParamsStruct{}
 
 	deviceStateReturnValue = "closed"

@@ -5,7 +5,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"sort"
 	"time"
 
 	util "github.com/brchri/tesla-youq/internal/util"
@@ -144,25 +143,6 @@ func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action st
 		action = "open"
 	}
 	return
-}
-
-// get center of polygon geofence
-func centroid(points []util.Point) util.Point {
-	var sumLat, sumLng float64
-	for _, p := range points {
-		sumLat += p.Lat
-		sumLng += p.Lng
-	}
-	return util.Point{Lat: sumLat / float64(len(points)), Lng: sumLng / float64(len(points))}
-}
-
-// sort polygon geofence clockwise to ensure a simple geofence type
-func SortPointsClockwise(points []util.Point) {
-	center := centroid(points)
-	sort.Slice(points, func(i, j int) bool {
-		return math.Atan2(points[i].Lat-center.Lat, points[i].Lng-center.Lng) <
-			math.Atan2(points[j].Lat-center.Lat, points[j].Lng-center.Lng)
-	})
 }
 
 // get action based on whether we had a polygon geofence change event
