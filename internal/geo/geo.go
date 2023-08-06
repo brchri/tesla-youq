@@ -110,9 +110,9 @@ func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
 }
 
 // gets action based on if there was a relevant distance change
-func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) string {
+func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) (action string) {
 	if car.CurLat == 0 || car.CurLng == 0 {
-		return "" // need valid lat and lng to check fence
+		return // need valid lat and lng to check fence
 	}
 
 	// Define a carLocation to check
@@ -126,18 +126,16 @@ func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) string {
 	car.CurDistance = distance(carLocation, car.GarageDoor.CircularGeofence.Center)
 
 	// check if car has crossed a geofence and set an appropriate action
-	var action string
 	if prevDistance <= car.GarageDoor.CircularGeofence.CloseDistance && car.CurDistance > car.GarageDoor.CircularGeofence.CloseDistance { // car was within close geofence, but now beyond it (car left geofence)
 		action = myq.ActionClose
 	} else if prevDistance >= car.GarageDoor.CircularGeofence.OpenDistance && car.CurDistance < car.GarageDoor.CircularGeofence.OpenDistance { // car was outside of open geofence, but is now within it (car entered geofence)
 		action = myq.ActionOpen
 	}
-	return action
+	return
 }
 
 // gets action based on if there was a relevant geofence event change
-func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
-	var action string
+func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action string) {
 	if car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Close.From &&
 		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Close.To {
 		action = "close"
@@ -145,7 +143,7 @@ func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
 		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Open.To {
 		action = "open"
 	}
-	return action
+	return
 }
 
 // get center of polygon geofence
@@ -169,8 +167,7 @@ func SortPointsClockwise(points []util.Point) {
 
 // get action based on whether we had a polygon geofence change event
 // uses ray-casting algorithm, assumes a simple geofence (no holes or border cross points)
-func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) string {
-	var action string
+func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action string) {
 	if car.CurLat == 0 || car.CurLng == 0 {
 		return "" // need valid lat and long to check geofence
 	}
@@ -188,7 +185,7 @@ func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) str
 	car.InsideCloseGeo = isInsideCloseGeo
 	car.InsideOpenGeo = isInsideOpenGeo
 
-	return action
+	return
 }
 
 func isInsidePolygonGeo(p util.Point, geofence []util.Point) bool {
