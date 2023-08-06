@@ -36,15 +36,15 @@ type (
 	}
 
 	Car struct {
-		ID             int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
-		GarageDoor     *GarageDoor // bidirectional pointer to GarageDoor containing car
-		CurLat         float64     // current latitude
-		CurLng         float64     // current longitude
-		CurDistance    float64     // current distance from garagedoor location
-		PrevGeofence   string      // geofence previously ascribed to car
-		CurGeofence    string      // updated geofence ascribed to car when published to mqtt
-		InsideOpenGeo  bool
-		InsideCloseGeo bool
+		ID                 int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
+		GarageDoor         *GarageDoor // bidirectional pointer to GarageDoor containing car
+		CurLat             float64     // current latitude
+		CurLng             float64     // current longitude
+		CurDistance        float64     // current distance from garagedoor location
+		PrevGeofence       string      // geofence previously ascribed to car
+		CurGeofence        string      // updated geofence ascribed to car when published to mqtt
+		InsidePolyOpenGeo  bool        // indicates if car is currently inside the polygon_open_geofence
+		InsidePolyCloseGeo bool        // indicates if car is currently inside the polygon_close_geofence
 	}
 
 	// defines a garage door with either a location and open/close radii, OR trigger open/close geofences

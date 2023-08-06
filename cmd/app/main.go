@@ -42,8 +42,10 @@ func init() {
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
-			car.InsideCloseGeo = true
-			car.InsideOpenGeo = true
+			if car.GarageDoor.GeofenceType == util.PolygonGeofenceType {
+				car.InsidePolyCloseGeo = true
+				car.InsidePolyOpenGeo = true
+			}
 		}
 	}
 }

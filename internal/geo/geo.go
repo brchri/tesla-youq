@@ -156,14 +156,14 @@ func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (ac
 	isInsideCloseGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonGeofence.Close)
 	isInsideOpenGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonGeofence.Open)
 
-	if car.InsideCloseGeo && !isInsideCloseGeo { // if we were inside the close geofence and now we're not, then close
+	if car.InsidePolyCloseGeo && !isInsideCloseGeo { // if we were inside the close geofence and now we're not, then close
 		action = "close"
-	} else if !car.InsideOpenGeo && isInsideOpenGeo { // if we were not inside the open geo and now we are, then open
+	} else if !car.InsidePolyOpenGeo && isInsideOpenGeo { // if we were not inside the open geo and now we are, then open
 		action = "open"
 	}
 
-	car.InsideCloseGeo = isInsideCloseGeo
-	car.InsideOpenGeo = isInsideOpenGeo
+	car.InsidePolyCloseGeo = isInsideCloseGeo
+	car.InsidePolyOpenGeo = isInsideOpenGeo
 
 	return
 }
