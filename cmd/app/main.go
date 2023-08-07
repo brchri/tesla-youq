@@ -163,19 +163,19 @@ func main() {
 				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
 				log.Printf("Received geo for car %d: %v", car.ID, car.CurGeofence)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car)
 			case "latitude":
 				if debug {
 					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car)
 			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car)
 			}
 
 		case <-signalChannel:

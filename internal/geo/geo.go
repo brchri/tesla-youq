@@ -51,7 +51,12 @@ func (m *MyqSessionWrapper) New() {
 	m.myqSession = &myq.Session{}
 }
 
-var myqExec MyqSessionInterface = &MyqSessionWrapper{} // executes myq package commands
+var myqExec MyqSessionInterface // executes myq package commands
+
+func init() {
+	myqExec = &MyqSessionWrapper{}
+	myqExec.New()
+}
 
 func distance(point1 util.Point, point2 util.Point) float64 {
 	// Calculate the distance between two points using the haversine formula
@@ -71,7 +76,7 @@ func toRadians(degrees float64) float64 {
 }
 
 // check if outside close geo or inside open geo and set garage door state accordingly
-func CheckGeoFence(config util.ConfigStruct, car *util.Car) {
+func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 
 	// get action based on either geo cross events or distance threshold cross events
 	var action string
@@ -184,11 +189,6 @@ func isInsidePolygonGeo(p util.Point, geofence []util.Point) bool {
 }
 
 func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string) error {
-	s := myqExec
-	s.New()
-	s.SetUsername(config.Global.MyQEmail)
-	s.SetPassword(config.Global.MyQPass)
-
 	var desiredState string
 	switch action {
 	case myq.ActionOpen:
@@ -202,25 +202,29 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 		return nil
 	}
 
-	log.Println("Acquiring MyQ session...")
-	if err := s.Login(); err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("ERROR: %v\n", err)
-		log.SetOutput(os.Stdout)
-		return err
-	}
-	log.Println("Session acquired...")
-
-	curState, err := s.DeviceState(deviceSerial)
+	curState, err := myqExec.DeviceState(deviceSerial)
 	if err != nil {
-		log.Printf("Couldn't get device state: %v", err)
-		return err
+		// fetching device state may have failed due to invalid session token; try fresh login to resolve
+		log.Println("Acquiring MyQ session...")
+		myqExec.New()
+		myqExec.SetUsername(config.Global.MyQEmail)
+		myqExec.SetPassword(config.Global.MyQPass)
+		if err := myqExec.Login(); err != nil {
+			log.Printf("ERROR: %v\n", err)
+			return err
+		}
+		log.Println("Session acquired...")
+		curState, err = myqExec.DeviceState(deviceSerial)
+		if err != nil {
+			log.Printf("Couldn't get device state: %v", err)
+			return err
+		}
 	}
 
 	log.Printf("Requested action: %v, Current state: %v", action, curState)
 	if (action == myq.ActionOpen && curState == myq.StateClosed) || (action == myq.ActionClose && curState == myq.StateOpen) {
 		log.Printf("Attempting action: %v", action)
-		err := s.SetDoorState(deviceSerial, action)
+		err := myqExec.SetDoorState(deviceSerial, action)
 		if err != nil {
 			log.Printf("Unable to set door state: %v", err)
 			return err
@@ -235,7 +239,7 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 	var currentState string
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
-		state, err := s.DeviceState(deviceSerial)
+		state, err := myqExec.DeviceState(deviceSerial)
 		if err != nil {
 			return err
 		}
