@@ -1,5 +1,8 @@
-# In this config example, there are two garage doors we wish to control that are connected to the same account.
-# The first garage door houses 2 Tesla vehicles, while the second garage door houses a third Tesla vehicle.
+# This is an example config file with all available options and explanations for anything that isn't necessarily obvious.
+# For a simpler example, please refer to the config.simple.example.yml file. Please also refer to the README for more information.
+
+# In this config example, there are three garage doors we wish to control that are connected to the same account.
+# The first garage door houses 2 Tesla vehicles, while the second and third garage doors house a single Tesla vehicle each.
 # Anytime a garage door is operated by this app, it will wait the configured 5 minutes "cooldown" before allowing
 # further operations on that specific garage door.
 
@@ -16,25 +19,62 @@ global:
   myq_pass: super_secret_password # password to auth to myq account; can also be passed as env var MYQ_PASS
 
 garage_doors:
-  - # main garage
-    # the following defines the latitude and longitude of the garage door location, which will be the center of the geofence radius
-    # you can use a tool like https://www.freemaptools.com/radius-around-point.htm to get the latitude, longitude, and radius sizes to fit your needs
-    location:
-      lat: 48.858195
-      lng: 2.294689
-    close_radius: .03503 # distance in kilometers car must travel away from garage location to close garage door
-    open_radius: .23138 # distance in kilometers car must be in range of garage location to open garage door
+  - # main garage example
+    circular_geofence: # circular geofence with a center point, open and close distances (radii)
+      center:
+        lat: 46.19290425661381
+        lng: -123.79965087116439
+      close_distance: .013 # distance in kilometers car must travel away from garage location to close garage door
+      open_distance: .04 # distance in kilometers car must be in range of garage location while traveling closer to it to open garage door
     myq_serial: myq_serial_1 # serial number of garage door opener; see README for more info
-    cars:
+    cars: # list of cars that use this garage door
       - teslamage_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
-  - # 3rd car garage
-    trigger_close_geofence: # uses geofences defined in teslamate; this method is less reliable and not recommended; see Notes section in the README for details
-      from: home
-      to: close_to_home
-    trigger_open_geofence: # uses geofences defined in teslamate; this method is less reliable and not recommended; see Notes section in the README for details
-      from: not_home
-      to: close_to_home
+  
+  - # 3rd car garage example
+    teslamate_geofence: # uses geofences defined in teslamate; this method is less reliable and not recommended; see Notes section in the README for details
+      close_trigger: # define which geofence changes trigger a close action (e.g. moving from `home` geofence to `not_home`)
+        from: home
+        to: not_home
+      open_trigger: # define which geofence changes trigger an open action (e.g. moving from `not_home` geofence to `home`)
+        from: not_home
+        to: home
     myq_serial: myq_serial_2 # serial number of garage door opener; see README for more info
     cars:
       - teslamage_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
+  
+  - # 4th car detached garage example
+    polygon_geofence: # custom defined polygonal geofence
+      open: # when vehicle moves from outside to inside this geofence, garage will open
+        - lat: 46.193245921812746
+          lng: -123.7997972320742
+        - lat: 46.193052416203386
+          lng: -123.79991877106825
+        - lat: 46.192459275200264
+          lng: -123.8000342331126
+        - lat: 46.19246067743231
+          lng: -123.8013205208015
+        - lat: 46.19241300151987
+          lng: -123.80133064905115
+        - lat: 46.192411599286004
+          lng: -123.79997751491551
+        - lat: 46.1927747765306
+          lng: -123.79954200018626
+        - lat: 46.19297669643191
+          lng: -123.79953592323656
+        - lat: 46.193245921812746
+          lng: -123.7997972320742
+      close: # when vehicle moves from inside to outside this geofence, garage will close
+        - lat: 46.192958467582514
+          lng: -123.7998033090239
+        - lat: 46.19279440766502
+          lng: -123.7998033090239
+        - lat: 46.19279440766502
+          lng: -123.79950958978756
+        - lat: 46.192958467582514
+          lng: -123.79950958978756
+        - lat: 46.192958467582514
+          lng: -123.7998033090239
+    myq_serial: myq_serial_3 # serial number of garage door opener; see README for more info
+    cars:
+      - teslamage_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker

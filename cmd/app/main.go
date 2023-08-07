@@ -36,9 +36,16 @@ func init() {
 	util.LoadConfig(configFile)
 	checkEnvVars()
 	for _, garageDoor := range util.Config.GarageDoors {
+		if garageDoor.GeofenceType == "" {
+			log.Fatalf("error: no supported geofences defined for garage door %v", garageDoor)
+		}
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
+			if car.GarageDoor.GeofenceType == util.PolygonGeofenceType {
+				car.InsidePolyCloseGeo = true
+				car.InsidePolyOpenGeo = true
+			}
 		}
 	}
 }
@@ -156,19 +163,19 @@ func main() {
 				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
 				log.Printf("Received geo for car %d: %v", car.ID, car.CurGeofence)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car)
 			case "latitude":
 				if debug {
 					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car)
 			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeoFence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car)
 			}
 
 		case <-signalChannel:
@@ -187,15 +194,14 @@ func onMqttConnect(client mqtt.Client) {
 		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
 
 		// define which topics are relevant for each car based on config
-		topics := make([]string, 0)
-		if car.GarageDoor.TriggerCloseGeofence.IsGeofenceDefined() && car.GarageDoor.TriggerOpenGeofence.IsGeofenceDefined() {
-			car.GarageDoor.UseTeslmateGeofence = true
-			topics = append(topics, "geofence")
-		} else if car.GarageDoor.Location.IsPointDefined() {
-			topics = append(topics, "latitude", "longitude")
-			car.GarageDoor.UseTeslmateGeofence = false
-		} else {
-			log.Fatalf("must define a valid location and radii for garage door or open and close geofence triggers")
+		var topics []string
+		switch car.GarageDoor.GeofenceType {
+		case util.PolygonGeofenceType:
+			topics = []string{"latitude", "longitude"}
+		case util.CircularGeofenceType:
+			topics = []string{"latitude", "longitude"}
+		case util.TeslamateGeofenceType:
+			topics = []string{"geofence"}
 		}
 
 		// subscribe to topics

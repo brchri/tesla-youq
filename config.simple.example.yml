@@ -1,0 +1,19 @@
+# This config file is meant to serve as an example of how simple the config file can be if you don't need the extra options
+# To keep it clean, it won't explain any parameters; please refer to the full config.example.yml file for parameter explanations
+
+global:
+  mqtt_host: localhost
+  mqtt_port: 1883
+  myq_email: myq@example.com
+  myq_pass: super_secret_password
+
+garage_doors:
+  - circular_geofence:
+      center:
+        lat: 46.19290425661381
+        lng: -123.79965087116439
+      close_distance: .013
+      open_distance: .04
+    myq_serial: myq_serial_1
+    cars:
+      - teslamage_car_id: 1
