@@ -7,6 +7,7 @@ import (
 
 	"github.com/brchri/tesla-youq/internal/mocks"
 	"github.com/joeshaw/myq"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	util "github.com/brchri/tesla-youq/internal/util"
@@ -45,6 +46,65 @@ func init() {
 	polygonCar.GarageDoor.GeofenceType = util.PolygonGeofenceType
 
 	util.Config.Global.OpCooldown = 0
+}
+
+func Test_getDistanceChangeAction(t *testing.T) {
+	distanceCar.CurDistance = 0
+	distanceCar.CurLat = distanceCar.GarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurLng = distanceCar.GarageDoor.CircularGeofence.Center.Lng
+
+	assert.Equal(t, myq.ActionClose, getDistanceChangeAction(util.Config, distanceCar))
+	assert.Greater(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.CloseDistance)
+
+	distanceCar.CurLat = distanceCar.GarageDoor.CircularGeofence.Center.Lat
+
+	assert.Equal(t, myq.ActionOpen, getDistanceChangeAction(util.Config, distanceCar))
+	assert.Less(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.OpenDistance)
+}
+
+func Test_getGeoChangeEventAction(t *testing.T) {
+	geofenceCar.PrevGeofence = "home"
+	geofenceCar.CurGeofence = "not_home"
+
+	assert.Equal(t, myq.ActionClose, getGeoChangeEventAction(util.Config, geofenceCar))
+
+	geofenceCar.PrevGeofence = "not_home"
+	geofenceCar.CurGeofence = "home"
+
+	assert.Equal(t, myq.ActionOpen, getGeoChangeEventAction(util.Config, geofenceCar))
+}
+
+func Test_isInsidePolygonGeo(t *testing.T) {
+	p := util.Point{
+		Lat: 46.19292902096646,
+		Lng: -123.79984989897177,
+	}
+
+	assert.Equal(t, false, isInsidePolygonGeo(p, polygonCar.GarageDoor.PolygonGeofence.Close))
+
+	p = util.Point{
+		Lat: 46.19243683948096,
+		Lng: -123.80103692981524,
+	}
+
+	assert.Equal(t, true, isInsidePolygonGeo(p, polygonCar.GarageDoor.PolygonGeofence.Open))
+}
+
+func Test_getPolygonGeoChangeEventAction(t *testing.T) {
+	polygonCar.InsidePolyCloseGeo = true
+	polygonCar.InsidePolyOpenGeo = true
+	polygonCar.CurLat = 46.19292902096646
+	polygonCar.CurLng = -123.79984989897177
+
+	assert.Equal(t, myq.ActionClose, getPolygonGeoChangeEventAction(util.Config, polygonCar))
+	assert.Equal(t, false, polygonCar.InsidePolyCloseGeo)
+	assert.Equal(t, true, polygonCar.InsidePolyOpenGeo)
+
+	polygonCar.InsidePolyOpenGeo = false
+	polygonCar.CurLat = 46.19243683948096
+	polygonCar.CurLng = -123.80103692981524
+
+	assert.Equal(t, myq.ActionOpen, getPolygonGeoChangeEventAction(util.Config, polygonCar))
 }
 
 func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
