@@ -9,6 +9,14 @@ type MyqSessionInterface struct {
 	mock.Mock
 }
 
+type MyqSessionInterface_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *MyqSessionInterface) EXPECT() *MyqSessionInterface_Expecter {
+	return &MyqSessionInterface_Expecter{mock: &_m.Mock}
+}
+
 // DeviceState provides a mock function with given fields: serialNumber
 func (_m *MyqSessionInterface) DeviceState(serialNumber string) (string, error) {
 	ret := _m.Called(serialNumber)
@@ -33,6 +41,34 @@ func (_m *MyqSessionInterface) DeviceState(serialNumber string) (string, error) 
 	return r0, r1
 }
 
+// MyqSessionInterface_DeviceState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeviceState'
+type MyqSessionInterface_DeviceState_Call struct {
+	*mock.Call
+}
+
+// DeviceState is a helper method to define mock.On call
+//   - serialNumber string
+func (_e *MyqSessionInterface_Expecter) DeviceState(serialNumber interface{}) *MyqSessionInterface_DeviceState_Call {
+	return &MyqSessionInterface_DeviceState_Call{Call: _e.mock.On("DeviceState", serialNumber)}
+}
+
+func (_c *MyqSessionInterface_DeviceState_Call) Run(run func(serialNumber string)) *MyqSessionInterface_DeviceState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_DeviceState_Call) Return(_a0 string, _a1 error) *MyqSessionInterface_DeviceState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MyqSessionInterface_DeviceState_Call) RunAndReturn(run func(string) (string, error)) *MyqSessionInterface_DeviceState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Login provides a mock function with given fields:
 func (_m *MyqSessionInterface) Login() error {
 	ret := _m.Called()
@@ -47,9 +83,63 @@ func (_m *MyqSessionInterface) Login() error {
 	return r0
 }
 
+// MyqSessionInterface_Login_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Login'
+type MyqSessionInterface_Login_Call struct {
+	*mock.Call
+}
+
+// Login is a helper method to define mock.On call
+func (_e *MyqSessionInterface_Expecter) Login() *MyqSessionInterface_Login_Call {
+	return &MyqSessionInterface_Login_Call{Call: _e.mock.On("Login")}
+}
+
+func (_c *MyqSessionInterface_Login_Call) Run(run func()) *MyqSessionInterface_Login_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_Login_Call) Return(_a0 error) *MyqSessionInterface_Login_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MyqSessionInterface_Login_Call) RunAndReturn(run func() error) *MyqSessionInterface_Login_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // New provides a mock function with given fields:
 func (_m *MyqSessionInterface) New() {
 	_m.Called()
+}
+
+// MyqSessionInterface_New_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'New'
+type MyqSessionInterface_New_Call struct {
+	*mock.Call
+}
+
+// New is a helper method to define mock.On call
+func (_e *MyqSessionInterface_Expecter) New() *MyqSessionInterface_New_Call {
+	return &MyqSessionInterface_New_Call{Call: _e.mock.On("New")}
+}
+
+func (_c *MyqSessionInterface_New_Call) Run(run func()) *MyqSessionInterface_New_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_New_Call) Return() *MyqSessionInterface_New_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MyqSessionInterface_New_Call) RunAndReturn(run func()) *MyqSessionInterface_New_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SetDoorState provides a mock function with given fields: serialNumber, action
@@ -66,14 +156,99 @@ func (_m *MyqSessionInterface) SetDoorState(serialNumber string, action string) 
 	return r0
 }
 
+// MyqSessionInterface_SetDoorState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDoorState'
+type MyqSessionInterface_SetDoorState_Call struct {
+	*mock.Call
+}
+
+// SetDoorState is a helper method to define mock.On call
+//   - serialNumber string
+//   - action string
+func (_e *MyqSessionInterface_Expecter) SetDoorState(serialNumber interface{}, action interface{}) *MyqSessionInterface_SetDoorState_Call {
+	return &MyqSessionInterface_SetDoorState_Call{Call: _e.mock.On("SetDoorState", serialNumber, action)}
+}
+
+func (_c *MyqSessionInterface_SetDoorState_Call) Run(run func(serialNumber string, action string)) *MyqSessionInterface_SetDoorState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetDoorState_Call) Return(_a0 error) *MyqSessionInterface_SetDoorState_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetDoorState_Call) RunAndReturn(run func(string, string) error) *MyqSessionInterface_SetDoorState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetPassword provides a mock function with given fields: _a0
 func (_m *MyqSessionInterface) SetPassword(_a0 string) {
 	_m.Called(_a0)
 }
 
+// MyqSessionInterface_SetPassword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPassword'
+type MyqSessionInterface_SetPassword_Call struct {
+	*mock.Call
+}
+
+// SetPassword is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MyqSessionInterface_Expecter) SetPassword(_a0 interface{}) *MyqSessionInterface_SetPassword_Call {
+	return &MyqSessionInterface_SetPassword_Call{Call: _e.mock.On("SetPassword", _a0)}
+}
+
+func (_c *MyqSessionInterface_SetPassword_Call) Run(run func(_a0 string)) *MyqSessionInterface_SetPassword_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetPassword_Call) Return() *MyqSessionInterface_SetPassword_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetPassword_Call) RunAndReturn(run func(string)) *MyqSessionInterface_SetPassword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetUsername provides a mock function with given fields: _a0
 func (_m *MyqSessionInterface) SetUsername(_a0 string) {
 	_m.Called(_a0)
+}
+
+// MyqSessionInterface_SetUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUsername'
+type MyqSessionInterface_SetUsername_Call struct {
+	*mock.Call
+}
+
+// SetUsername is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MyqSessionInterface_Expecter) SetUsername(_a0 interface{}) *MyqSessionInterface_SetUsername_Call {
+	return &MyqSessionInterface_SetUsername_Call{Call: _e.mock.On("SetUsername", _a0)}
+}
+
+func (_c *MyqSessionInterface_SetUsername_Call) Run(run func(_a0 string)) *MyqSessionInterface_SetUsername_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetUsername_Call) Return() *MyqSessionInterface_SetUsername_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetUsername_Call) RunAndReturn(run func(string)) *MyqSessionInterface_SetUsername_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // NewMyqSessionInterface creates a new instance of MyqSessionInterface. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

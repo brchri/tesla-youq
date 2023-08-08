@@ -48,100 +48,98 @@ func init() {
 }
 
 func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Leaving home, garage close
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("New").Once()
-	myqSession.On("Login").Return(nil).Once()
-	myqSession.On("SetUsername", mock.AnythingOfType("string")).Once()
-	myqSession.On("SetPassword", mock.AnythingOfType("string")).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().New().Once()
+	myqSession.EXPECT().Login().Return(nil).Once()
+	myqSession.EXPECT().SetUsername(mock.AnythingOfType("string")).Once()
+	myqSession.EXPECT().SetPassword(mock.AnythingOfType("string")).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
 
 	distanceCar.CurDistance = 0
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
-
-	myqSession.AssertExpectations(t)
-	// mockery command to generate interface: .\mockery.exe --dir internal\geo --name "MyqSessionInterface"
 }
 
 func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Leaving home, garage close
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
 
 	distanceCar.CurDistance = 0
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
-
-	myqSession.AssertExpectations(t)
-	// mockery command to generate interface: .\mockery.exe --dir internal\geo --name "MyqSessionInterface"
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Arriving home, garage open
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
 
 	distanceCar.CurDistance = 100
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
-
-	myqSession.AssertExpectations(t)
-	// mockery command to generate interface: .\mockery.exe --dir internal\geo --name "MyqSessionInterface"
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Arriving home, garage open
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Times(3)
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionOpen).Return(errors.New("some error")).Twice()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Times(3)
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(errors.New("some error")).Twice()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 
 	distanceCar.CurDistance = 100
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
-
-	myqSession.AssertExpectations(t)
-	// mockery command to generate interface: .\mockery.exe --dir internal\geo --name "MyqSessionInterface"
 }
 
 func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Leaving home, garage close
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
-	myqSession.On("New").Once()
-	myqSession.On("SetUsername", mock.AnythingOfType("string")).Once()
-	myqSession.On("SetPassword", mock.AnythingOfType("string")).Once()
-	myqSession.On("Login").Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
+	myqSession.EXPECT().New().Once()
+	myqSession.EXPECT().SetUsername(mock.AnythingOfType("string")).Once()
+	myqSession.EXPECT().SetPassword(mock.AnythingOfType("string")).Once()
+	myqSession.EXPECT().Login().Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
 
 	distanceCar.CurDistance = 0
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
@@ -149,68 +147,67 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 
 	CheckGeofence(util.Config, distanceCar)
 
-	myqSession.AssertExpectations(t)
+	myqSession.AssertExpectations(t) // midpoint check
 
 	// TEST 2 - Arriving home, garage open
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
-
-	myqSession.AssertExpectations(t)
-	// mockery command to generate interface: .\mockery.exe --dir internal\geo --name "MyqSessionInterface"
 }
 
 func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Leaving home, garage close
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	myqSession.On("SetDoorState", mock.Anything, myq.ActionClose).Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.Anything, myq.ActionClose).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
 
 	geofenceCar.PrevGeofence = "home"
 	geofenceCar.CurGeofence = "not_home"
 
 	CheckGeofence(util.Config, geofenceCar)
-
-	myqSession.AssertExpectations(t)
 }
 
 func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Leaving home, garage close
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("SetDoorState", mock.Anything, myq.ActionOpen).Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.Anything, myq.ActionOpen).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 
 	geofenceCar.PrevGeofence = "not_home"
 	geofenceCar.CurGeofence = "home"
 
 	CheckGeofence(util.Config, geofenceCar)
-
-	myqSession.AssertExpectations(t)
 }
 
 func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Leaving home, garage close
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("New").Once()
-	myqSession.On("Login").Return(nil).Once()
-	myqSession.On("SetUsername", mock.AnythingOfType("string")).Once()
-	myqSession.On("SetPassword", mock.AnythingOfType("string")).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().New().Once()
+	myqSession.EXPECT().Login().Return(nil).Once()
+	myqSession.EXPECT().SetUsername(mock.AnythingOfType("string")).Once()
+	myqSession.EXPECT().SetPassword(mock.AnythingOfType("string")).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Once()
 
 	polygonCar.InsidePolyCloseGeo = true
 	polygonCar.InsidePolyOpenGeo = true
@@ -218,18 +215,18 @@ func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	polygonCar.CurLng = -123.79984989897177
 
 	CheckGeofence(util.Config, polygonCar)
-
-	myqSession.AssertExpectations(t)
 }
 
 func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
-	myqSession := mocks.NewMyqSessionInterface(t)
+	myqSession := &mocks.MyqSessionInterface{}
+	myqSession.Test(t)
+	defer myqSession.AssertExpectations(t)
 	myqExec = myqSession
 
 	// TEST 1 - Arriving home, garage open
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-	myqSession.On("SetDoorState", mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-	myqSession.On("DeviceState", mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
+	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 
 	polygonCar.InsidePolyCloseGeo = false
 	polygonCar.InsidePolyOpenGeo = false
@@ -237,6 +234,4 @@ func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
 	polygonCar.CurLng = -123.80103692981524
 
 	CheckGeofence(util.Config, polygonCar)
-
-	myqSession.AssertExpectations(t)
 }

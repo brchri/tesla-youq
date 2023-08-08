@@ -1,0 +1,9 @@
+with-expecter: true
+mockname: "{{.InterfaceName}}"
+filename: "{{.MockName}}.go"
+outpkg: mocks
+dir: internal/mocks
+packages:
+  github.com/brchri/tesla-youq/internal/geo:
+    interfaces:
+      MyqSessionInterface:
