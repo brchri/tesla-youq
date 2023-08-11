@@ -28,7 +28,7 @@ garage_doors:
       open_distance: .04 # distance in kilometers car must be in range of garage location while traveling closer to it to open garage door
     myq_serial: myq_serial_1 # serial number of garage door opener; see README for more info
     cars: # list of cars that use this garage door
-      - teslamage_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
+      - teslamate_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
   
   - # 3rd car garage example
@@ -41,7 +41,7 @@ garage_doors:
         to: home
     myq_serial: myq_serial_2 # serial number of garage door opener; see README for more info
     cars:
-      - teslamage_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
+      - teslamate_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
   
   - # 4th car detached garage example
     polygon_geofence: # custom defined polygonal geofence
@@ -77,4 +77,4 @@ garage_doors:
           lng: -123.7998033090239
     myq_serial: myq_serial_3 # serial number of garage door opener; see README for more info
     cars:
-      - teslamage_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker
+      - teslamate_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker

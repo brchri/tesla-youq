@@ -16,4 +16,4 @@ garage_doors:
       open_distance: .04
     myq_serial: myq_serial_1
     cars:
-      - teslamage_car_id: 1
+      - teslamate_car_id: 1
