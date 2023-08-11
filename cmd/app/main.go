@@ -36,9 +36,6 @@ func init() {
 	util.LoadConfig(configFile)
 	checkEnvVars()
 	for _, garageDoor := range util.Config.GarageDoors {
-		if garageDoor.GeofenceType == "" {
-			log.Fatalf("error: no supported geofences defined for garage door %v", garageDoor)
-		}
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
