@@ -94,7 +94,7 @@ garage_doors:
       open_distance: .04
     myq_serial: myq_serial_1
     cars:
-      - teslamage_car_id: 1
+      - teslamate_car_id: 1
 ```
 This would produce two circular geofences (open and close) that look like this:
 
@@ -122,7 +122,7 @@ garage_doors:
         to: home
     myq_serial: myq_serial_1
     cars:
-      - teslamage_car_id: 1
+      - teslamate_car_id: 1
 ```
 
 #### Polygon Geofence
@@ -165,7 +165,7 @@ garage_doors:
           lng: -123.7998033090239
     myq_serial: myq_serial_1
     cars:
-      - teslamage_car_id: 1
+      - teslamate_car_id: 1
 ```
 
 This would produce two polygonal geofences (open and close) that look like this:
