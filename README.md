@@ -175,7 +175,7 @@ An example of a garage door configured this way would look like this:
 ```yaml
 garage_doors:
   - polygon_geofence:
-      kml_file: "config/polygon_geofences.kml"
+      kml_file: config/polygon_geofences.kml
     myq_serial: myq_serial_1
     cars:
       - teslamate_car_id: 1
