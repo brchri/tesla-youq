@@ -31,7 +31,7 @@ docker run \
   -e MYQ_EMAIL=my_email@address.com \ # optional, can also be saved in the config.yml file
   -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
   -e TZ=America/New_York \ # optional, sets timezone for container
-  -v /etc/tesla-youq/config.yml:/app/config/config.yml:ro \ # required, mounts config file into container
+  -v /etc/tesla-youq:/app/config:ro \ # required, mounts folder containing config file(s) into container
   brchri/tesla-youq:latest
 ```
 
@@ -48,7 +48,7 @@ services:
       - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
       - TZ=America/New_York # optional, sets timezone for container
     volumes:
-      - /etc/tesla-youq/config.yml:/app/config/config.yml:ro # required, mounts config file into container
+      - /etc/tesla-youq:/app/config:ro # required, mounts folder containing config file(s) into container
     restart: unless-stopped
 ```
 
@@ -168,7 +168,20 @@ garage_doors:
       - teslamate_car_id: 1
 ```
 
-This would produce two polygonal geofences (open and close) that look like this:
+Or, using a tool referenced above or any other of your choosing, you can generate and download a KML file containing your polygon geofences instead of manually defining the points in your config file. Be sure that the KML file is in a mounted volume and accessible within the container. Within your KML file, you *must* define a `name` element within each `Placemark` element for each geofence, with the value `open` or `close` accordingly. Please see the [polygon_map.kml](resources/polygon_map.kml) file for an example.
+
+An example of a garage door configured this way would look like this:
+
+```yaml
+garage_doors:
+  - polygon_geofence:
+      kml_file: "config/polygon_geofences.kml"
+    myq_serial: myq_serial_1
+    cars:
+      - teslamate_car_id: 1
+```
+
+Either of these configs would produce two polygonal geofences (open and close) that look like this:
 
 ![image](https://github.com/brchri/tesla-youq/assets/126272303/55c0eed4-3927-4678-865c-ac99e890f8bb)
 

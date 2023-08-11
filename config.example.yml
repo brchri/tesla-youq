@@ -45,6 +45,7 @@ garage_doors:
   
   - # 4th car detached garage example
     polygon_geofence: # custom defined polygonal geofence
+      kml_file: ../../resources/polygon_map.kml # optional, path to kml file to load polygon geofences; define this OR the `open` and `close` definitions below
       open: # when vehicle moves from outside to inside this geofence, garage will open
         - lat: 46.193245921812746
           lng: -123.7997972320742
