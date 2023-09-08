@@ -23,11 +23,12 @@ import (
 )
 
 var (
-	debug       bool
-	configFile  string
-	cars        []*util.Car                  // list of all cars from all garage doors
-	version     string            = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
-	messageChan chan mqtt.Message            // channel to receive mqtt messages
+	debug           bool
+	configFile      string
+	cars            []*util.Car                  // list of all cars from all garage doors
+	version         string            = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
+	messageChan     chan mqtt.Message            // channel to receive mqtt messages
+	responseChannel chan bool
 )
 
 func init() {
@@ -99,6 +100,7 @@ func main() {
 	fmt.Println()
 
 	messageChan = make(chan mqtt.Message)
+	responseChannel = make(chan bool, 1)
 
 	// create a new MQTT client
 	opts := mqtt.NewClientOptions()
@@ -147,6 +149,7 @@ func main() {
 
 			// locate car and car's garage door
 			var car *util.Car
+
 			for _, c := range cars {
 				if fmt.Sprintf("%d", c.ID) == m[2] {
 					car = c
@@ -160,19 +163,29 @@ func main() {
 				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
 				log.Printf("Received geo for car %d: %v", car.ID, car.CurGeofence)
-				go geo.CheckGeofence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car, responseChannel)
 			case "latitude":
 				if debug {
 					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeofence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car, responseChannel)
 			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				}
 				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeofence(util.Config, car)
+				go geo.CheckGeofence(util.Config, car, responseChannel)
+			case "shift_state":
+				if debug {
+					log.Printf("Received Shift State for Car %d: %v", car.ID, string(message.Payload()))
+				}
+				if string(message.Payload()) == "P" {
+					if len(responseChannel) > 0 && <-responseChannel {
+						log.Printf("Car parked. Verify location is at home and close garage")
+						go geo.VailidateGeofenceAndClose(util.Config, car, "close")
+					}
+				}
 			}
 
 		case <-signalChannel:
@@ -194,11 +207,11 @@ func onMqttConnect(client mqtt.Client) {
 		var topics []string
 		switch car.GarageDoor.GeofenceType {
 		case util.PolygonGeofenceType:
-			topics = []string{"latitude", "longitude"}
+			topics = []string{"latitude", "longitude", "shift_state"}
 		case util.CircularGeofenceType:
-			topics = []string{"latitude", "longitude"}
+			topics = []string{"latitude", "longitude", "shift_state"}
 		case util.TeslamateGeofenceType:
-			topics = []string{"geofence"}
+			topics = []string{"geofence", "shift_state"}
 		}
 
 		// subscribe to topics

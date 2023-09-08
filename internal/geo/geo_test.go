@@ -126,8 +126,10 @@ func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	distanceCar.CurDistance = 0
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, distanceCar)
+	CheckGeofence(util.Config, distanceCar, responseChannel)
+	assert.True(t, len(responseChannel) == 0, "Length of responseChannel didn't match the expected length of 0")
 }
 
 func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
@@ -144,8 +146,10 @@ func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
 	distanceCar.CurDistance = 0
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, distanceCar)
+	CheckGeofence(util.Config, distanceCar, responseChannel)
+	assert.True(t, len(responseChannel) == 0, "Length of responseChannel didn't match the expected length of 0")
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -162,8 +166,13 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
 	distanceCar.CurDistance = 100
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, distanceCar)
+	CheckGeofence(util.Config, distanceCar, responseChannel)
+
+	// TEST 2 - Arrived home, garage open, initiating auto-close
+	assert.True(t, len(responseChannel) == 1, "Length of responseChannel didn't match the expected length of 1")
+	testValidateGeofenceAndClose(t, distanceCar, myqSession, responseChannel)
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
@@ -181,8 +190,13 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
 	distanceCar.CurDistance = 100
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, distanceCar)
+	CheckGeofence(util.Config, distanceCar, responseChannel)
+
+	// TEST 2 - Arrived home, garage open, initiating auto-close
+	assert.True(t, len(responseChannel) == 1, "Length of responseChannel didn't match the expected length of 1")
+	testValidateGeofenceAndClose(t, distanceCar, myqSession, responseChannel)
 }
 
 func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
@@ -205,7 +219,9 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
+	responseChannel := make(chan bool, 1)
+
+	CheckGeofence(util.Config, distanceCar, responseChannel)
 
 	myqSession.AssertExpectations(t) // midpoint check
 
@@ -216,7 +232,22 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
+	CheckGeofence(util.Config, distanceCar, responseChannel)
+
+	// TEST 3 - Arrived home, garage open, initiating auto-close
+	assert.True(t, len(responseChannel) == 1, "Length of responseChannel didn't match the expected length of 1")
+	testValidateGeofenceAndClose(t, distanceCar, myqSession, responseChannel)
+}
+
+func testValidateGeofenceAndClose(t *testing.T, car *util.Car, myqSession *mocks.MyqSessionInterface, responseChannel chan bool) {
+	if <-responseChannel {
+		myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+		myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
+		myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+		VailidateGeofenceAndClose(util.Config, car, myq.ActionClose)
+	} else {
+		t.Error("Expected the value in responseChannel to be true")
+	}
 }
 
 func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
@@ -232,8 +263,11 @@ func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
 
 	geofenceCar.PrevGeofence = "home"
 	geofenceCar.CurGeofence = "not_home"
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, geofenceCar)
+	CheckGeofence(util.Config, geofenceCar, responseChannel)
+
+	assert.True(t, len(responseChannel) == 0, "Length of responseChannel didn't match the expected length of 0")
 }
 
 func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -249,8 +283,13 @@ func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
 
 	geofenceCar.PrevGeofence = "not_home"
 	geofenceCar.CurGeofence = "home"
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, geofenceCar)
+	CheckGeofence(util.Config, geofenceCar, responseChannel)
+
+	// TEST 2 - Arrived home, garage open, initiating auto-close
+	assert.True(t, len(responseChannel) == 1, "Length of responseChannel didn't match the expected length of 1")
+	testValidateGeofenceAndClose(t, geofenceCar, myqSession, responseChannel)
 }
 
 func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
@@ -273,8 +312,10 @@ func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	polygonCar.InsidePolyOpenGeo = true
 	polygonCar.CurLat = 46.19292902096646
 	polygonCar.CurLng = -123.79984989897177
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, polygonCar)
+	CheckGeofence(util.Config, polygonCar, responseChannel)
+	assert.True(t, len(responseChannel) == 0, "Length of responseChannel didn't match the expected length of 0")
 }
 
 func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -292,6 +333,11 @@ func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
 	polygonCar.InsidePolyOpenGeo = false
 	polygonCar.CurLat = 46.19243683948096
 	polygonCar.CurLng = -123.80103692981524
+	responseChannel := make(chan bool, 1)
 
-	CheckGeofence(util.Config, polygonCar)
+	CheckGeofence(util.Config, polygonCar, responseChannel)
+
+	// TEST 2 - Arrived home, garage open, initiating auto-close
+	assert.True(t, len(responseChannel) == 1, "Length of responseChannel didn't match the expected length of 1")
+	testValidateGeofenceAndClose(t, polygonCar, myqSession, responseChannel)
 }

@@ -76,10 +76,11 @@ func toRadians(degrees float64) float64 {
 }
 
 // check if outside close geo or inside open geo and set garage door state accordingly
-func CheckGeofence(config util.ConfigStruct, car *util.Car) {
+func CheckGeofence(config util.ConfigStruct, car *util.Car, responseChannel chan bool) {
 
 	// get action based on either geo cross events or distance threshold cross events
 	var action string
+
 	switch car.GarageDoor.GeofenceType {
 	case util.TeslamateGeofenceType:
 		action = getGeoChangeEventAction(config, car)
@@ -100,6 +101,10 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 	for i := 3; i > 0; i-- {
 		if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
 			// no error received, so breaking retry loop
+			if action == "open" && len(responseChannel) == 0 {
+				responseChannel <- true
+				log.Printf("Garage Door Open, Queing a message to close the garage")
+			}
 			break
 		}
 		if i == 1 {
@@ -111,6 +116,52 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 
 	time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
 	car.GarageDoor.OpLock = false                                     // release garage door's operation lock
+}
+
+// when parked, check if the car is at the home location and close the garage door.
+func VailidateGeofenceAndClose(config util.ConfigStruct, car *util.Car, action string) {
+	timeout := 40
+	interval := 2
+	elapsed := 0
+	for car.GarageDoor.OpLock && elapsed < timeout {
+		time.Sleep((time.Duration(interval)) * time.Second)
+		elapsed += interval
+	}
+
+	if action == "" || car.GarageDoor.OpLock {
+		return // only execute if there's a valid action to execute and the garage door isn't on cooldown
+	}
+
+	closeGarage := false
+	switch car.GarageDoor.GeofenceType {
+	case util.TeslamateGeofenceType:
+		closeGarage = car.CurGeofence == car.GarageDoor.TeslamateGeofence.Open.To
+	case util.CircularGeofenceType:
+		closeGarage = car.CurDistance < car.GarageDoor.CircularGeofence.CloseDistance
+	case util.PolygonGeofenceType:
+		closeGarage = car.InsidePolyOpenGeo
+	}
+
+	if closeGarage {
+		car.GarageDoor.OpLock = true // set lock so no other threads try to operate the garage before the cooldown period is complete
+		log.Printf("Attempting to %s garage door for car %d", action, car.ID)
+
+		// create retry loop to set the garage door state
+		for i := 3; i > 0; i-- {
+			if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
+				// no error received, so breaking retry loop
+				break
+			}
+			if i == 1 {
+				log.Println("Unable to set garage door state, no further attempts will be made")
+			} else {
+				log.Printf("Retrying set garage door state %d more time(s)", i-1)
+			}
+		}
+
+		time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
+		car.GarageDoor.OpLock = false                                     // release garage door's operation lock
+	}
 }
 
 // gets action based on if there was a relevant distance change
