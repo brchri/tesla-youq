@@ -124,7 +124,7 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 
 // gets action based on if there was a relevant distance change
 func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if car.CurrentLocation.IsPointDefined() {
+	if !car.CurrentLocation.IsPointDefined() {
 		return // need valid lat and lng to check fence
 	}
 
@@ -156,7 +156,7 @@ func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action st
 // get action based on whether we had a polygon geofence change event
 // uses ray-casting algorithm, assumes a simple geofence (no holes or border cross points)
 func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if car.CurrentLocation.IsPointDefined() {
+	if !car.CurrentLocation.IsPointDefined() {
 		return "" // need valid lat and long to check geofence
 	}
 
