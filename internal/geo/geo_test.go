@@ -4,6 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/brchri/tesla-youq/internal/mocks"
 	"github.com/joeshaw/myq"
@@ -127,13 +128,7 @@ func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !distanceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
 func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
@@ -151,13 +146,7 @@ func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !distanceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -175,13 +164,7 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !distanceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
@@ -200,13 +183,7 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !distanceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
 func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
@@ -246,13 +223,7 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	CheckGeofence(util.Config, distanceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !distanceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
 func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
@@ -269,13 +240,7 @@ func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
 	geofenceCar.PrevGeofence = "home"
 	geofenceCar.CurGeofence = "not_home"
 
-	CheckGeofence(util.Config, geofenceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !geofenceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
 }
 
 func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -292,13 +257,7 @@ func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
 	geofenceCar.PrevGeofence = "not_home"
 	geofenceCar.CurGeofence = "home"
 
-	CheckGeofence(util.Config, geofenceCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !geofenceCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
 }
 
 func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
@@ -322,13 +281,7 @@ func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	polygonCar.CurrentLocation.Lat = 46.19292902096646
 	polygonCar.CurrentLocation.Lng = -123.79984989897177
 
-	CheckGeofence(util.Config, polygonCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !polygonCar.GarageDoor.OpLock {
-			break
-		}
-	}
+	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
 }
 
 func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -347,11 +300,19 @@ func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
 	polygonCar.CurrentLocation.Lat = 46.19243683948096
 	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
-	CheckGeofence(util.Config, polygonCar)
-	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-	for {
-		if !polygonCar.GarageDoor.OpLock {
-			break
+	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
+}
+
+// runs CheckGeofence and waits for the internal goroutine to complete, signified by the release of oplock,
+// with 100 ms timeout
+func checkGeofenceWrapper(car *util.Car) bool {
+	CheckGeofence(util.Config, car)
+	// wait for oplock to be released with a 100 ms timeout
+	for i := 0; i < 10; i++ {
+		if !car.GarageDoor.OpLock {
+			return true
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
+	return false
 }
