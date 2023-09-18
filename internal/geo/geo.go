@@ -94,40 +94,43 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 	}
 
 	car.GarageDoor.OpLock = true // set lock so no other threads try to operate the garage before the cooldown period is complete
-	log.Printf("Attempting to %s garage door for car %d at lat %f, long %f", action, car.ID, car.CurLat, car.CurLng)
-
-	// create retry loop to set the garage door state
-	for i := 3; i > 0; i-- {
-		if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
-			// no error received, so breaking retry loop
-			break
-		}
-		if i == 1 {
-			log.Println("Unable to set garage door state, no further attempts will be made")
+	// send operation to garage door and wait for timeout to release oplock
+	// run as goroutine to prevent blocking update channels from mqtt broker in main
+	go func() {
+		if car.GarageDoor.GeofenceType == util.TeslamateGeofenceType {
+			log.Printf("Attempting to %s garage door for car %d", action, car.ID)
 		} else {
-			log.Printf("Retrying set garage door state %d more time(s)", i-1)
+			// if closing door based on lat and lng, print those values
+			log.Printf("Attempting to %s garage door for car %d at lat %f, long %f", action, car.ID, car.CurrentLocation.Lat, car.CurrentLocation.Lng)
 		}
-	}
 
-	time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
-	car.GarageDoor.OpLock = false                                     // release garage door's operation lock
+		// create retry loop to set the garage door state
+		for i := 3; i > 0; i-- {
+			if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
+				// no error received, so breaking retry loop
+				break
+			}
+			if i == 1 {
+				log.Println("Unable to set garage door state, no further attempts will be made")
+			} else {
+				log.Printf("Retrying set garage door state %d more time(s)", i-1)
+			}
+		}
+
+		time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
+		car.GarageDoor.OpLock = false                                     // release garage door's operation lock
+	}()
 }
 
 // gets action based on if there was a relevant distance change
 func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if car.CurLat == 0 || car.CurLng == 0 {
+	if car.CurrentLocation.IsPointDefined() {
 		return // need valid lat and lng to check fence
-	}
-
-	// Define a carLocation to check
-	carLocation := util.Point{
-		Lat: car.CurLat,
-		Lng: car.CurLng,
 	}
 
 	// update car's current distance, and store the previous distance in a variable
 	prevDistance := car.CurDistance
-	car.CurDistance = distance(carLocation, car.GarageDoor.CircularGeofence.Center)
+	car.CurDistance = distance(car.CurrentLocation, car.GarageDoor.CircularGeofence.Center)
 
 	// check if car has crossed a geofence and set an appropriate action
 	if prevDistance <= car.GarageDoor.CircularGeofence.CloseDistance && car.CurDistance > car.GarageDoor.CircularGeofence.CloseDistance { // car was within close geofence, but now beyond it (car left geofence)
@@ -153,13 +156,12 @@ func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action st
 // get action based on whether we had a polygon geofence change event
 // uses ray-casting algorithm, assumes a simple geofence (no holes or border cross points)
 func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if car.CurLat == 0 || car.CurLng == 0 {
+	if car.CurrentLocation.IsPointDefined() {
 		return "" // need valid lat and long to check geofence
 	}
 
-	p := util.Point{Lat: car.CurLat, Lng: car.CurLng}
-	isInsideCloseGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonGeofence.Close)
-	isInsideOpenGeo := isInsidePolygonGeo(p, car.GarageDoor.PolygonGeofence.Open)
+	isInsideCloseGeo := isInsidePolygonGeo(car.CurrentLocation, car.GarageDoor.PolygonGeofence.Close)
+	isInsideOpenGeo := isInsidePolygonGeo(car.CurrentLocation, car.GarageDoor.PolygonGeofence.Open)
 
 	if car.InsidePolyCloseGeo && !isInsideCloseGeo { // if we were inside the close geofence and now we're not, then close
 		action = "close"

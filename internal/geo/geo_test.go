@@ -50,13 +50,13 @@ func init() {
 
 func Test_getDistanceChangeAction(t *testing.T) {
 	distanceCar.CurDistance = 0
-	distanceCar.CurLat = distanceCar.GarageDoor.CircularGeofence.Center.Lat + 10
-	distanceCar.CurLng = distanceCar.GarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceCar.GarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceCar.GarageDoor.CircularGeofence.Center.Lng
 
 	assert.Equal(t, myq.ActionClose, getDistanceChangeAction(util.Config, distanceCar))
 	assert.Greater(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.CloseDistance)
 
-	distanceCar.CurLat = distanceCar.GarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lat = distanceCar.GarageDoor.CircularGeofence.Center.Lat
 
 	assert.Equal(t, myq.ActionOpen, getDistanceChangeAction(util.Config, distanceCar))
 	assert.Less(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.OpenDistance)
@@ -93,16 +93,16 @@ func Test_isInsidePolygonGeo(t *testing.T) {
 func Test_getPolygonGeoChangeEventAction(t *testing.T) {
 	polygonCar.InsidePolyCloseGeo = true
 	polygonCar.InsidePolyOpenGeo = true
-	polygonCar.CurLat = 46.19292902096646
-	polygonCar.CurLng = -123.79984989897177
+	polygonCar.CurrentLocation.Lat = 46.19292902096646
+	polygonCar.CurrentLocation.Lng = -123.79984989897177
 
 	assert.Equal(t, myq.ActionClose, getPolygonGeoChangeEventAction(util.Config, polygonCar))
 	assert.Equal(t, false, polygonCar.InsidePolyCloseGeo)
 	assert.Equal(t, true, polygonCar.InsidePolyOpenGeo)
 
 	polygonCar.InsidePolyOpenGeo = false
-	polygonCar.CurLat = 46.19243683948096
-	polygonCar.CurLng = -123.80103692981524
+	polygonCar.CurrentLocation.Lat = 46.19243683948096
+	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
 	assert.Equal(t, myq.ActionOpen, getPolygonGeoChangeEventAction(util.Config, polygonCar))
 }
@@ -124,8 +124,8 @@ func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
 
 	distanceCar.CurDistance = 0
-	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
-	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
 }
@@ -142,8 +142,8 @@ func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
 
 	distanceCar.CurDistance = 0
-	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
-	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
 }
@@ -160,8 +160,8 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
 
 	distanceCar.CurDistance = 100
-	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
-	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
 }
@@ -179,8 +179,8 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 
 	distanceCar.CurDistance = 100
-	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
-	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
 }
@@ -202,8 +202,8 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
 
 	distanceCar.CurDistance = 0
-	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
-	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
 
@@ -213,8 +213,8 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-	distanceCar.CurLat = distanceGarageDoor.CircularGeofence.Center.Lat
-	distanceCar.CurLng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
 }
@@ -271,8 +271,8 @@ func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
 
 	polygonCar.InsidePolyCloseGeo = true
 	polygonCar.InsidePolyOpenGeo = true
-	polygonCar.CurLat = 46.19292902096646
-	polygonCar.CurLng = -123.79984989897177
+	polygonCar.CurrentLocation.Lat = 46.19292902096646
+	polygonCar.CurrentLocation.Lng = -123.79984989897177
 
 	CheckGeofence(util.Config, polygonCar)
 }
@@ -290,8 +290,8 @@ func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
 
 	polygonCar.InsidePolyCloseGeo = false
 	polygonCar.InsidePolyOpenGeo = false
-	polygonCar.CurLat = 46.19243683948096
-	polygonCar.CurLng = -123.80103692981524
+	polygonCar.CurrentLocation.Lat = 46.19243683948096
+	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
 	CheckGeofence(util.Config, polygonCar)
 }
