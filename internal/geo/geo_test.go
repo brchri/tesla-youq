@@ -128,6 +128,12 @@ func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
@@ -146,6 +152,12 @@ func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -164,6 +176,12 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
@@ -183,6 +201,12 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
@@ -206,6 +230,12 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 
 	myqSession.AssertExpectations(t) // midpoint check
 
@@ -217,6 +247,12 @@ func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
 	CheckGeofence(util.Config, distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
@@ -234,6 +270,12 @@ func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
 	geofenceCar.CurGeofence = "not_home"
 
 	CheckGeofence(util.Config, geofenceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !geofenceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -251,6 +293,12 @@ func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
 	geofenceCar.CurGeofence = "home"
 
 	CheckGeofence(util.Config, geofenceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !geofenceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
@@ -275,6 +323,12 @@ func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
 	polygonCar.CurrentLocation.Lng = -123.79984989897177
 
 	CheckGeofence(util.Config, polygonCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !polygonCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
 
 func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
@@ -294,4 +348,10 @@ func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
 	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
 	CheckGeofence(util.Config, polygonCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !polygonCar.GarageDoor.OpLock {
+			break
+		}
+	}
 }
