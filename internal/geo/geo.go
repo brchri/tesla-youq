@@ -94,7 +94,7 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 	}
 
 	car.GarageDoor.OpLock = true // set lock so no other threads try to operate the garage before the cooldown period is complete
-	log.Printf("Attempting to %s garage door for car %d", action, car.ID)
+	log.Printf("Attempting to %s garage door for car %d at lat %f, long %f", action, car.ID, car.CurLat, car.CurLng)
 
 	// create retry loop to set the garage door state
 	for i := 3; i > 0; i-- {
