@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/brchri/myq"
 	"github.com/brchri/tesla-youq/internal/mocks"
-	"github.com/joeshaw/myq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 

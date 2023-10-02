@@ -6,7 +6,6 @@ require (
 	github.com/brchri/myq v0.0.0-20231002041725-18aa0c937db3
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/google/uuid v1.3.0
-	github.com/joeshaw/myq v0.0.0-20221122173250-4d1216b9fc87
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/yaml.v3 v3.0.1
 )
