@@ -61,8 +61,8 @@ type (
 	Car struct {
 		ID                 int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
 		GarageDoor         *GarageDoor // bidirectional pointer to GarageDoor containing car
-		CurLat             float64     // current latitude
-		CurLng             float64     // current longitude
+		CurrentLocation    Point       // current vehicle location
+		LocationUpdate     chan Point  // channel to receive location updates
 		CurDistance        float64     // current distance from garagedoor location
 		PrevGeofence       string      // geofence previously ascribed to car
 		CurGeofence        string      // updated geofence ascribed to car when published to mqtt
@@ -151,6 +151,11 @@ func LoadConfig(configFile string) {
 		g.GeofenceType = g.GetGeofenceType()
 		if g.GeofenceType == "" {
 			log.Fatalf("error: no supported geofences defined for garage door %v", g)
+		}
+
+		// initialize location update channel
+		for _, c := range g.Cars {
+			c.LocationUpdate = make(chan Point, 2)
 		}
 	}
 

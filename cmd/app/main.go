@@ -43,6 +43,8 @@ func init() {
 				car.InsidePolyCloseGeo = true
 				car.InsidePolyOpenGeo = true
 			}
+			// start listening to car update location channels
+			go processLocationUpdates(car)
 		}
 	}
 }
@@ -165,14 +167,20 @@ func main() {
 				if debug {
 					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				}
-				car.CurLat, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeofence(util.Config, car)
+				lat, _ := strconv.ParseFloat(string(message.Payload()), 64)
+				go func(lat float64) {
+					// send as goroutine so it doesn't block other vehicle updates if channel buffer is full
+					car.LocationUpdate <- util.Point{Lat: lat, Lng: 0}
+				}(lat)
 			case "longitude":
 				if debug {
 					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				}
-				car.CurLng, _ = strconv.ParseFloat(string(message.Payload()), 64)
-				go geo.CheckGeofence(util.Config, car)
+				lng, _ := strconv.ParseFloat(string(message.Payload()), 64)
+				go func(lng float64) {
+					// send as goroutine so it doesn't block other vehicle updates if channel buffer is full
+					car.LocationUpdate <- util.Point{Lat: 0, Lng: lng}
+				}(lng)
 			}
 
 		case <-signalChannel:
@@ -181,6 +189,23 @@ func main() {
 			time.Sleep(250 * time.Millisecond)
 			return
 
+		}
+	}
+}
+
+// watches the LocationUpdate channel for a car and queues a CheckGeofence operation
+// this allows threaded geofence checks for multiple vehicles, while each individual vehicle
+// does not have parallel threads executing checks
+func processLocationUpdates(car *util.Car) {
+	for update := range car.LocationUpdate {
+		if update.Lat != 0 {
+			car.CurrentLocation.Lat = update.Lat
+		}
+		if update.Lng != 0 {
+			car.CurrentLocation.Lng = update.Lng
+		}
+		if car.CurrentLocation.IsPointDefined() {
+			geo.CheckGeofence(util.Config, car)
 		}
 	}
 }
