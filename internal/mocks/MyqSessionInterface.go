@@ -69,6 +69,47 @@ func (_c *MyqSessionInterface_DeviceState_Call) RunAndReturn(run func(string) (s
 	return _c
 }
 
+// GetToken provides a mock function with given fields:
+func (_m *MyqSessionInterface) GetToken() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MyqSessionInterface_GetToken_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetToken'
+type MyqSessionInterface_GetToken_Call struct {
+	*mock.Call
+}
+
+// GetToken is a helper method to define mock.On call
+func (_e *MyqSessionInterface_Expecter) GetToken() *MyqSessionInterface_GetToken_Call {
+	return &MyqSessionInterface_GetToken_Call{Call: _e.mock.On("GetToken")}
+}
+
+func (_c *MyqSessionInterface_GetToken_Call) Run(run func()) *MyqSessionInterface_GetToken_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_GetToken_Call) Return(_a0 string) *MyqSessionInterface_GetToken_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MyqSessionInterface_GetToken_Call) RunAndReturn(run func() string) *MyqSessionInterface_GetToken_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Login provides a mock function with given fields:
 func (_m *MyqSessionInterface) Login() error {
 	ret := _m.Called()
@@ -214,6 +255,39 @@ func (_c *MyqSessionInterface_SetPassword_Call) Return() *MyqSessionInterface_Se
 }
 
 func (_c *MyqSessionInterface_SetPassword_Call) RunAndReturn(run func(string)) *MyqSessionInterface_SetPassword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetToken provides a mock function with given fields: _a0
+func (_m *MyqSessionInterface) SetToken(_a0 string) {
+	_m.Called(_a0)
+}
+
+// MyqSessionInterface_SetToken_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetToken'
+type MyqSessionInterface_SetToken_Call struct {
+	*mock.Call
+}
+
+// SetToken is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MyqSessionInterface_Expecter) SetToken(_a0 interface{}) *MyqSessionInterface_SetToken_Call {
+	return &MyqSessionInterface_SetToken_Call{Call: _e.mock.On("SetToken", _a0)}
+}
+
+func (_c *MyqSessionInterface_SetToken_Call) Run(run func(_a0 string)) *MyqSessionInterface_SetToken_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetToken_Call) Return() *MyqSessionInterface_SetToken_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MyqSessionInterface_SetToken_Call) RunAndReturn(run func(string)) *MyqSessionInterface_SetToken_Call {
 	_c.Call.Return(run)
 	return _c
 }

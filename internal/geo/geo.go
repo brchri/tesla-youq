@@ -2,6 +2,7 @@ package geo
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -9,7 +10,7 @@ import (
 
 	util "github.com/brchri/tesla-youq/internal/util"
 
-	"github.com/joeshaw/myq"
+	"github.com/brchri/myq"
 )
 
 // interface that allows api calls to myq to be abstracted and mocked by testing functions
@@ -19,6 +20,8 @@ type MyqSessionInterface interface {
 	SetDoorState(serialNumber, action string) error
 	SetUsername(string)
 	SetPassword(string)
+	GetToken() string
+	SetToken(string)
 	New()
 }
 
@@ -40,7 +43,22 @@ func (m *MyqSessionWrapper) DeviceState(s string) (string, error) {
 }
 
 func (m *MyqSessionWrapper) Login() error {
-	return m.myqSession.Login()
+	err := m.myqSession.Login()
+	// cache token if requested
+	if err == nil && util.Config.Global.CacheTokenDir != "" {
+		file, fileErr := os.OpenFile(util.Config.Global.CacheTokenDir, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if fileErr != nil {
+			log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenDir)
+		} else {
+			defer file.Close()
+
+			_, writeErr := file.WriteString(m.GetToken())
+			if writeErr != nil {
+				log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenDir)
+			}
+		}
+	}
+	return err
 }
 
 func (m *MyqSessionWrapper) SetDoorState(serialNumber, action string) error {
@@ -49,6 +67,14 @@ func (m *MyqSessionWrapper) SetDoorState(serialNumber, action string) error {
 
 func (m *MyqSessionWrapper) New() {
 	m.myqSession = &myq.Session{}
+}
+
+func (m *MyqSessionWrapper) GetToken() string {
+	return m.myqSession.GetToken()
+}
+
+func (m *MyqSessionWrapper) SetToken(token string) {
+	m.myqSession.SetToken(token)
 }
 
 var myqExec MyqSessionInterface // executes myq package commands
@@ -202,6 +228,23 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 	if config.Testing {
 		log.Printf("TESTING flag set - Would attempt action %v", action)
 		return nil
+	}
+
+	// check for cached token if we haven't retrieved it already
+	if util.Config.Global.CacheTokenDir != "" && myqExec.GetToken() == "" {
+		file, err := os.Open(util.Config.Global.CacheTokenDir)
+		if err != nil {
+			log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenDir)
+		} else {
+			defer file.Close()
+
+			data, err := io.ReadAll(file)
+			if err != nil {
+				log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenDir)
+			} else {
+				myqExec.SetToken(string(data))
+			}
+		}
 	}
 
 	curState, err := myqExec.DeviceState(deviceSerial)

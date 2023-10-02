@@ -31,7 +31,7 @@ docker run \
   -e MYQ_EMAIL=my_email@address.com \ # optional, can also be saved in the config.yml file
   -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
   -e TZ=America/New_York \ # optional, sets timezone for container
-  -v /etc/tesla-youq:/app/config:ro \ # required, mounts folder containing config file(s) into container
+  -v /etc/tesla-youq:/app/config \ # required, mounts folder containing config file(s) into container
   brchri/tesla-youq:latest
 ```
 
@@ -48,7 +48,7 @@ services:
       - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
       - TZ=America/New_York # optional, sets timezone for container
     volumes:
-      - /etc/tesla-youq:/app/config:ro # required, mounts folder containing config file(s) into container
+      - /etc/tesla-youq:/app/config # required, mounts folder containing config file(s) into container
     restart: unless-stopped
 ```
 

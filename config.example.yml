@@ -17,6 +17,7 @@ global:
   cooldown: 5 # minutes to wait after operating garage before allowing another garage operation
   myq_email: myq@example.com # email to auth to myq account; can also be passed as env var MYQ_EMAIL
   myq_pass: super_secret_password # password to auth to myq account; can also be passed as env var MYQ_PASS
+  cache_token_dir: config/token_cache.txt # location to cache myq auth token; omit to disable caching token; useful to prevent generating too many myq auth requests, especially when testing
 
 garage_doors:
   - # main garage example
