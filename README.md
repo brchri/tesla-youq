@@ -27,11 +27,13 @@ This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adrian
 This app is provided as a docker image. You will need to download the [config.example.yml](config.example.yml) file (or the simplified [config.simple.example.yml](config.simple.example.yml)), edit it appropriately, and then mount it to the container at runtime. For example:
 
 ```bash
+# see docker compose below for comments on each parameter
 docker run \
-  -e MYQ_EMAIL=my_email@address.com \ # optional, can also be saved in the config.yml file
-  -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
-  -e TZ=America/New_York \ # optional, sets timezone for container
-  -v /etc/tesla-youq:/app/config \ # required, mounts folder containing config file(s) into container
+  -e MYQ_EMAIL=my_email@address.com \
+  -e MYQ_PASS=my_super_secret_pass \
+  -e TZ=America/New_York \
+  -v /etc/tesla-youq:/app/config \
+  --user 1000:1000 \
   brchri/tesla-youq:latest
 ```
 
@@ -43,10 +45,13 @@ services:
   tesla-youq:
     image: brchri/tesla-youq:latest
     container_name: tesla-youq
+    user: 1000:1000 # optional, sets user to run in container, must have read access to mounted config volume (+ write if using token caching)
     environment:
       - MYQ_EMAIL=my_email@address.com # optional, can also be saved in the config.yml file
       - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
       - TZ=America/New_York # optional, sets timezone for container
+      - PUID=1000 # optoinal, sets user id to run in container; mutually exclusive with docker `user` directive
+      - PGID=1000 # optoinal, sets group id to run in container; mutually exclusive with docker `user` directive
     volumes:
       - /etc/tesla-youq:/app/config # required, mounts folder containing config file(s) into container
     restart: unless-stopped
@@ -61,6 +66,8 @@ The following Docker environment variables are supported but not required.
 | `MYQ_PASS` | String | Password to authenticate to MyQ account. Can be used instead of setting `myq_pass` in the `config.yml` file |
 | `MQTT_USER` | String | User to authenticate to MQTT broker. Can be used instead of setting `mqtt_user` in the `config.yml` file |
 | `MQTT_PASS` | String | Password to authenticate to MQTT broker. Can be used instead of setting `mqtt_pass` in the `config.yml` file |
+| `PUID` | Integer | User ID to run in the container. Must have read access to mounted config volume, and write access if using token caching. Mutually exclusive with docker --user flag |
+| `PGID` | Integer | Group ID to run in the container. Mutually exclusive with docker --user flag |
 | `DEBUG` | Bool | Increases output verbosity |
 | `TESTING` | Bool | Will perform all functions *except* actually operating garage door, and will just output operation *would've* happened |
 | `TZ` | String | Sets timezone for container |
