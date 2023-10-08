@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/brchri/myq"
 	"github.com/brchri/tesla-youq/internal/mocks"
-	"github.com/joeshaw/myq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -27,6 +27,7 @@ var (
 
 func init() {
 	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
+	util.Config.Global.CacheTokenFile = "" // dont assume cached token in testing
 
 	// used for testing events based on distance
 	distanceGarageDoor = util.Config.GarageDoors[0]
