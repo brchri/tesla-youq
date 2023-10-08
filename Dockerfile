@@ -27,7 +27,7 @@ RUN apk add --no-cache bash tzdata su-exec && \
     chown -R nonroot:nonroot /app
 
 COPY --from=builder --chown=nonroot:nonroot --chmod=755 /app/tesla-youq /app/config.example.yml /app/
-COPY ./entrypoint.sh /app/
+COPY --chmod=755 ./entrypoint.sh /app/
 
 ENV PATH="/app:${PATH}"
 
