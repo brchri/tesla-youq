@@ -45,16 +45,16 @@ func (m *MyqSessionWrapper) DeviceState(s string) (string, error) {
 func (m *MyqSessionWrapper) Login() error {
 	err := m.myqSession.Login()
 	// cache token if requested
-	if err == nil && util.Config.Global.CacheTokenDir != "" {
-		file, fileErr := os.OpenFile(util.Config.Global.CacheTokenDir, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err == nil && util.Config.Global.CacheTokenFile != "" {
+		file, fileErr := os.OpenFile(util.Config.Global.CacheTokenFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if fileErr != nil {
-			log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenDir)
+			log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
 		} else {
 			defer file.Close()
 
 			_, writeErr := file.WriteString(m.GetToken())
 			if writeErr != nil {
-				log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenDir)
+				log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
 			}
 		}
 	}
@@ -231,16 +231,16 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 	}
 
 	// check for cached token if we haven't retrieved it already
-	if util.Config.Global.CacheTokenDir != "" && myqExec.GetToken() == "" {
-		file, err := os.Open(util.Config.Global.CacheTokenDir)
+	if util.Config.Global.CacheTokenFile != "" && myqExec.GetToken() == "" {
+		file, err := os.Open(util.Config.Global.CacheTokenFile)
 		if err != nil {
-			log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenDir)
+			log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
 		} else {
 			defer file.Close()
 
 			data, err := io.ReadAll(file)
 			if err != nil {
-				log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenDir)
+				log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
 			} else {
 				myqExec.SetToken(string(data))
 			}

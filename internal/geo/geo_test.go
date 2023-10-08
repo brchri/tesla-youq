@@ -27,7 +27,7 @@ var (
 
 func init() {
 	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
-	util.Config.Global.CacheTokenDir = "" // dont assume cached token in testing
+	util.Config.Global.CacheTokenFile = "" // dont assume cached token in testing
 
 	// used for testing events based on distance
 	distanceGarageDoor = util.Config.GarageDoors[0]

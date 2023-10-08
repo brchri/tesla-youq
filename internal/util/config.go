@@ -95,7 +95,7 @@ type (
 			OpCooldown        int    `yaml:"cooldown"`
 			MyQEmail          string `yaml:"myq_email"`
 			MyQPass           string `yaml:"myq_pass"`
-			CacheTokenDir     string `yaml:"cache_token_dir"`
+			CacheTokenFile    string `yaml:"cache_token_file"`
 		} `yaml:"global"`
 		GarageDoors []*GarageDoor `yaml:"garage_doors"`
 		Testing     bool

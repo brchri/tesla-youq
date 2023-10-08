@@ -27,11 +27,13 @@ This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adrian
 This app is provided as a docker image. You will need to download the [config.example.yml](config.example.yml) file (or the simplified [config.simple.example.yml](config.simple.example.yml)), edit it appropriately, and then mount it to the container at runtime. For example:
 
 ```bash
+# see docker compose example below for parameter explanations
 docker run \
-  -e MYQ_EMAIL=my_email@address.com \ # optional, can also be saved in the config.yml file
-  -e MYQ_PASS=my_super_secret_pass \ # optional, can also be saved in the config.yml file
-  -e TZ=America/New_York \ # optional, sets timezone for container
-  -v /etc/tesla-youq:/app/config \ # required, mounts folder containing config file(s) into container
+  --user 1000:1000 \
+  -e MYQ_EMAIL=my_email@address.com \
+  -e MYQ_PASS=my_super_secret_pass \
+  -e TZ=America/New_York \
+  -v /etc/tesla-youq:/app/config \
   brchri/tesla-youq:latest
 ```
 
@@ -43,6 +45,7 @@ services:
   tesla-youq:
     image: brchri/tesla-youq:latest
     container_name: tesla-youq
+    user: 1000:1000 # optional, sets user to run in container; must have read access to mounted config volume (+ write if using token caching)
     environment:
       - MYQ_EMAIL=my_email@address.com # optional, can also be saved in the config.yml file
       - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
