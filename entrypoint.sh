@@ -28,7 +28,12 @@ if [ -n "$PUID" ] && [ "$PUID" -ne 0 ] && [ "$PUID" -ne "$OUID" ]; then
   RUID=$PGID
 fi
 
-chown $RUID:$RGID /app /app/*
+# change ownership of all files and folders in /app EXCEPT config, which is a mounted volume
+chown $RUID:$RGID /app
+for file in /app/*; do
+  [ "$(basename "$file")" = "config" ] && continue
+  chown $RUID:$RGID $file
+done
 
 # Use su-exec to execute the command as nonroot user
 exec su-exec $RUID:$RGID "$@"
