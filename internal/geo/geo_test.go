@@ -168,24 +168,26 @@ func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
-func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
-	myqSession := &mocks.MyqSessionInterface{}
-	myqSession.Test(t)
-	defer myqSession.AssertExpectations(t)
-	myqExec = myqSession
+// retry logic has been temporarily disabled, so this test is not needed until it's re-enabled
+// this is due to the myq api changes that need stabilizing so we don't retry and hit api rate limiting
+// func Test_CheckCircularGeofence_Arriving_LoggedIn_Retry(t *testing.T) {
+// 	myqSession := &mocks.MyqSessionInterface{}
+// 	myqSession.Test(t)
+// 	defer myqSession.AssertExpectations(t)
+// 	myqExec = myqSession
 
-	// TEST 1 - Arriving home, garage open
-	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Times(3)
-	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(errors.New("some error")).Twice()
-	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+// 	// TEST 1 - Arriving home, garage open
+// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Times(3)
+// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(errors.New("some error")).Twice()
+// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
+// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 
-	distanceCar.CurDistance = 100
-	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
-	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
+// 	distanceCar.CurDistance = 100
+// 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
+// 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
-}
+// 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
+// }
 
 func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
 	myqSession := &mocks.MyqSessionInterface{}

@@ -131,7 +131,7 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 		}
 
 		// create retry loop to set the garage door state
-		for i := 3; i > 0; i-- {
+		for i := 1; i > 0; i-- { // temporarily setting to 1 to disable retry logic while myq auth endpoint stabilizes to avoid rate limiting
 			if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
 				// no error received, so breaking retry loop
 				break
