@@ -6,6 +6,10 @@ github.com/brchri/myq v0.0.0-20231011144527-624a68a134f7 h1:3Uht+0sMKLk9x8+QWZUB
 github.com/brchri/myq v0.0.0-20231011144527-624a68a134f7/go.mod h1:EDuAgiwrpS8cfzKCUrXpelEw1YOjxO/jhklEthAKmEs=
 github.com/brchri/myq v0.0.0-20231011145427-af9fc472ba40 h1:umY7pdRNohhcfNWs3BGV9br4gYoPGxo/q/NvGr5pYg0=
 github.com/brchri/myq v0.0.0-20231011145427-af9fc472ba40/go.mod h1:EDuAgiwrpS8cfzKCUrXpelEw1YOjxO/jhklEthAKmEs=
+github.com/brchri/myq v0.0.0-20231011223614-977a9792b054 h1:NbR/KNuDzmSGXi78b5K5KY0Dre7t9dMoqHMcZbZ0hMM=
+github.com/brchri/myq v0.0.0-20231011223614-977a9792b054/go.mod h1:EDuAgiwrpS8cfzKCUrXpelEw1YOjxO/jhklEthAKmEs=
+github.com/brchri/myq v0.0.0-20231011234622-15e50fb789db h1:7ann1FJumNDQsCpWh7laZqp6VNb9N0QDcCjcVZ5reFs=
+github.com/brchri/myq v0.0.0-20231011234622-15e50fb789db/go.mod h1:EDuAgiwrpS8cfzKCUrXpelEw1YOjxO/jhklEthAKmEs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

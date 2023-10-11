@@ -3,7 +3,7 @@ module github.com/brchri/tesla-youq
 go 1.19
 
 require (
-	github.com/brchri/myq v0.0.0-20231011145427-af9fc472ba40
+	github.com/brchri/myq v0.0.0-20231011234622-15e50fb789db
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.4
