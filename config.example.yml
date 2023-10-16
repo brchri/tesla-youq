@@ -6,6 +6,9 @@
 # Anytime a garage door is operated by this app, it will wait the configured 5 minutes "cooldown" before allowing
 # further operations on that specific garage door.
 
+## NOTE ##
+# Spacing is very important in this file, particularly the leading spacing (indentations). Failure to properly indent may cause config parsing to fail silently
+
 global:
   mqtt_host: localhost # dns, container name, or IP of teslamate's mqtt host
   mqtt_port: 1883
