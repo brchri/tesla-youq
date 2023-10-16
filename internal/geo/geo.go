@@ -3,12 +3,13 @@ package geo
 import (
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	util "github.com/brchri/tesla-youq/internal/util"
+	logger "github.com/sirupsen/logrus"
 
 	"github.com/brchri/myq"
 )
@@ -48,13 +49,13 @@ func (m *MyqSessionWrapper) Login() error {
 	if err == nil && util.Config.Global.CacheTokenFile != "" {
 		file, fileErr := os.OpenFile(util.Config.Global.CacheTokenFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if fileErr != nil {
-			log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
+			logger.Infof("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
 		} else {
 			defer file.Close()
 
 			_, writeErr := file.WriteString(m.GetToken())
 			if writeErr != nil {
-				log.Printf("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
+				logger.Infof("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
 			}
 		}
 	}
@@ -82,6 +83,10 @@ var myqExec MyqSessionInterface // executes myq package commands
 func init() {
 	myqExec = &MyqSessionWrapper{}
 	myqExec.New()
+	logger.SetFormatter(&util.CustomFormatter{})
+	if val, ok := os.LookupEnv("DEBUG"); ok && strings.ToLower(val) == "true" {
+		logger.SetLevel(logger.DebugLevel)
+	}
 }
 
 func distance(point1 util.Point, point2 util.Point) float64 {
@@ -124,10 +129,10 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 	// run as goroutine to prevent blocking update channels from mqtt broker in main
 	go func() {
 		if car.GarageDoor.GeofenceType == util.TeslamateGeofenceType {
-			log.Printf("Attempting to %s garage door for car %d", action, car.ID)
+			logger.Infof("Attempting to %s garage door for car %d", action, car.ID)
 		} else {
 			// if closing door based on lat and lng, print those values
-			log.Printf("Attempting to %s garage door for car %d at lat %f, long %f", action, car.ID, car.CurrentLocation.Lat, car.CurrentLocation.Lng)
+			logger.Infof("Attempting to %s garage door for car %d at lat %f, long %f", action, car.ID, car.CurrentLocation.Lat, car.CurrentLocation.Lng)
 		}
 
 		// create retry loop to set the garage door state
@@ -137,9 +142,9 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 				break
 			}
 			if i == 1 {
-				log.Println("Unable to set garage door state, no further attempts will be made")
+				logger.Info("Unable to set garage door state, no further attempts will be made")
 			} else {
-				log.Printf("Retrying set garage door state %d more time(s)", i-1)
+				logger.Infof("Retrying set garage door state %d more time(s)", i-1)
 			}
 		}
 
@@ -226,7 +231,7 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 	}
 
 	if config.Testing {
-		log.Printf("TESTING flag set - Would attempt action %v", action)
+		logger.Infof("TESTING flag set - Would attempt action %v", action)
 		return nil
 	}
 
@@ -234,13 +239,13 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 	if util.Config.Global.CacheTokenFile != "" && myqExec.GetToken() == "" {
 		file, err := os.Open(util.Config.Global.CacheTokenFile)
 		if err != nil {
-			log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
+			logger.Infof("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
 		} else {
 			defer file.Close()
 
 			data, err := io.ReadAll(file)
 			if err != nil {
-				log.Printf("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
+				logger.Infof("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
 			} else {
 				myqExec.SetToken(string(data))
 			}
@@ -250,36 +255,36 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 	curState, err := myqExec.DeviceState(deviceSerial)
 	if err != nil {
 		// fetching device state may have failed due to invalid session token; try fresh login to resolve
-		log.Println("Acquiring MyQ session...")
+		logger.Info("Acquiring MyQ session...")
 		myqExec.New()
 		myqExec.SetUsername(config.Global.MyQEmail)
 		myqExec.SetPassword(config.Global.MyQPass)
 		if err := myqExec.Login(); err != nil {
-			log.Printf("ERROR: %v\n", err)
+			logger.Infof("ERROR: %v\n", err)
 			return err
 		}
-		log.Println("Session acquired...")
+		logger.Info("Session acquired...")
 		curState, err = myqExec.DeviceState(deviceSerial)
 		if err != nil {
-			log.Printf("Couldn't get device state: %v", err)
+			logger.Infof("Couldn't get device state: %v", err)
 			return err
 		}
 	}
 
-	log.Printf("Requested action: %v, Current state: %v", action, curState)
+	logger.Infof("Requested action: %v, Current state: %v", action, curState)
 	if (action == myq.ActionOpen && curState == myq.StateClosed) || (action == myq.ActionClose && curState == myq.StateOpen) {
-		log.Printf("Attempting action: %v", action)
+		logger.Infof("Attempting action: %v", action)
 		err := myqExec.SetDoorState(deviceSerial, action)
 		if err != nil {
-			log.Printf("Unable to set door state: %v", err)
+			logger.Infof("Unable to set door state: %v", err)
 			return err
 		}
 	} else {
-		log.Printf("Action and state mismatch: garage state is not valid for executing requested action")
+		logger.Infof("Action and state mismatch: garage state is not valid for executing requested action")
 		return nil
 	}
 
-	log.Printf("Waiting for door to %s...\n", action)
+	logger.Infof("Waiting for door to %s...\n", action)
 
 	var currentState string
 	deadline := time.Now().Add(60 * time.Second)
@@ -290,7 +295,7 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 		}
 		if state != currentState {
 			if currentState != "" {
-				log.Printf("Door state changed to %s\n", state)
+				logger.Infof("Door state changed to %s\n", state)
 			}
 			currentState = state
 		}
@@ -312,25 +317,23 @@ func GetGarageDoorSerials(config util.ConfigStruct) error {
 	s.Username = config.Global.MyQEmail
 	s.Password = config.Global.MyQPass
 
-	log.Println("Acquiring MyQ session...")
+	logger.Info("Acquiring MyQ session...")
 	if err := s.Login(); err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("ERROR: %v\n", err)
-		log.SetOutput(os.Stdout)
+		logger.Errorf("ERROR: %v\n", err)
 		return err
 	}
-	log.Println("Session acquired...")
+	logger.Info("Session acquired...")
 
 	devices, err := s.Devices()
 	if err != nil {
-		log.Printf("Could not get devices: %v", err)
+		logger.Infof("Could not get devices: %v", err)
 		return err
 	}
 	for _, d := range devices {
-		log.Printf("Device Name: %v", d.Name)
-		log.Printf("Device State: %v", d.DoorState)
-		log.Printf("Device Type: %v", d.Type)
-		log.Printf("Device Serial: %v", d.SerialNumber)
+		logger.Infof("Device Name: %v", d.Name)
+		logger.Infof("Device State: %v", d.DoorState)
+		logger.Infof("Device Type: %v", d.Type)
+		logger.Infof("Device Serial: %v", d.SerialNumber)
 		fmt.Println()
 	}
 
