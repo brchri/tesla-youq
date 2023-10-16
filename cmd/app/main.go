@@ -16,6 +16,7 @@ import (
 
 	geo "github.com/brchri/tesla-youq/internal/geo"
 	"github.com/google/uuid"
+	logger "github.com/sirupsen/logrus"
 
 	util "github.com/brchri/tesla-youq/internal/util"
 
@@ -31,6 +32,10 @@ var (
 )
 
 func init() {
+	logger.SetFormatter(&util.CustomFormatter{})
+	if val, ok := os.LookupEnv("DEBUG"); ok && strings.ToLower(val) == "true" {
+		logger.SetLevel(logger.DebugLevel)
+	}
 	log.SetOutput(os.Stdout)
 	parseArgs()
 	util.LoadConfig(configFile)
@@ -75,13 +80,13 @@ func parseArgs() {
 		if configFile == "" {
 			var exists bool
 			if configFile, exists = os.LookupEnv("CONFIG_FILE"); !exists {
-				log.Fatalf("Config file must be defined with '-c' or 'CONFIG_FILE' environment variable")
+				logger.Fatalf("Config file must be defined with '-c' or 'CONFIG_FILE' environment variable")
 			}
 		}
 
 		// check that ConfigFile exists
 		if _, err := os.Stat(configFile); err != nil {
-			log.Fatalf("Config file %v doesn't exist!", configFile)
+			logger.Fatalf("Config file %v doesn't exist!", configFile)
 		}
 	} else {
 		// if -d flag passed, get devices and exit
@@ -95,48 +100,71 @@ func main() {
 	if value, exists := os.LookupEnv("TESTING"); exists {
 		util.Config.Testing, _ = strconv.ParseBool(value)
 	}
-	if value, exists := os.LookupEnv("DEBUG"); exists {
-		debug, _ = strconv.ParseBool(value)
-	}
-	fmt.Println()
 
 	messageChan = make(chan mqtt.Message)
 
+	logger.Debug("Setting MQTT Opts:")
 	// create a new MQTT client
 	opts := mqtt.NewClientOptions()
+	logger.Debug(" OrderMatters: false")
 	opts.SetOrderMatters(false)
+	logger.Debug(" KeepAlive: 30 seconds")
 	opts.SetKeepAlive(30 * time.Second)
+	logger.Debug(" PingTimeout: 10 seconds")
 	opts.SetPingTimeout(10 * time.Second)
+	logger.Debug(" AutoReconnect: true")
 	opts.SetAutoReconnect(true)
+	if util.Config.Global.MqttUser != "" {
+		logger.Debug(" Username: true <redacted value>")
+	} else {
+		logger.Debug(" Username: false (not set)")
+	}
 	opts.SetUsername(util.Config.Global.MqttUser) // if not defined, will just set empty strings and won't be used by pkg
+	if util.Config.Global.MqttPass != "" {
+		logger.Debug(" Password: true <redacted value>")
+	} else {
+		logger.Debug(" Password: false (not set)")
+	}
 	opts.SetPassword(util.Config.Global.MqttPass) // if not defined, will just set empty strings and won't be used by pkg
 	opts.OnConnect = onMqttConnect
 
 	// set conditional MQTT client opts
 	if util.Config.Global.MqttClientID != "" {
+		logger.Debugf(" ClientID: %s", util.Config.Global.MqttClientID)
 		opts.SetClientID(util.Config.Global.MqttClientID)
 	} else {
 		// generate UUID for mqtt client connection if not specified in config file
-		opts.SetClientID(uuid.New().String())
+		id := uuid.New().String()
+		logger.Debugf(" ClientID: %s", id)
+		opts.SetClientID(id)
 	}
+	logger.Debug(" Protocol: TCP")
 	mqttProtocol := "tcp"
 	if util.Config.Global.MqttUseTls {
+		logger.Debug(" UseTLS: true")
+		logger.Debugf(" SkipTLSVerify: %t", util.Config.Global.MqttSkipTlsVerify)
 		opts.SetTLSConfig(&tls.Config{
 			InsecureSkipVerify: util.Config.Global.MqttSkipTlsVerify,
 		})
 		mqttProtocol = "ssl"
+	} else {
+		logger.Debug(" UseTLS: false")
 	}
-	opts.AddBroker(fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.MqttHost, util.Config.Global.MqttPort))
+	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.MqttHost, util.Config.Global.MqttPort)
+	logger.Debugf(" Broker: %s", broker)
+	opts.AddBroker(broker)
 
 	// create a new MQTT client object
 	client := mqtt.NewClient(opts)
 
 	// connect to the MQTT broker
+	logger.Debug("Connecting to MQTT broker")
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		log.Fatalf("could not connect to mqtt broker: %v", token.Error())
+		logger.Fatalf("could not connect to mqtt broker: %v", token.Error())
 	} else {
-		log.Println("Connected to MQTT broker")
+		logger.Info("Connected to MQTT broker")
 	}
+	logger.Debugf("MQTT Broker Connected: %t", client.IsConnected())
 
 	// listen for incoming messages
 	signalChannel := make(chan os.Signal, 1)
@@ -161,21 +189,17 @@ func main() {
 			case "geofence":
 				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
-				log.Printf("Received geo for car %d: %v", car.ID, car.CurGeofence)
+				logger.Infof("Received geo for car %d: %v", car.ID, car.CurGeofence)
 				go geo.CheckGeofence(util.Config, car)
 			case "latitude":
-				if debug {
-					log.Printf("Received lat for car %d: %v", car.ID, string(message.Payload()))
-				}
+				logger.Debugf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				lat, _ := strconv.ParseFloat(string(message.Payload()), 64)
 				go func(lat float64) {
 					// send as goroutine so it doesn't block other vehicle updates if channel buffer is full
 					car.LocationUpdate <- util.Point{Lat: lat, Lng: 0}
 				}(lat)
 			case "longitude":
-				if debug {
-					log.Printf("Received long for car %d: %v", car.ID, string(message.Payload()))
-				}
+				logger.Debugf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				lng, _ := strconv.ParseFloat(string(message.Payload()), 64)
 				go func(lng float64) {
 					// send as goroutine so it doesn't block other vehicle updates if channel buffer is full
@@ -184,7 +208,7 @@ func main() {
 			}
 
 		case <-signalChannel:
-			log.Println("Received interrupt signal, shutting down...")
+			logger.Info("Received interrupt signal, shutting down...")
 			client.Disconnect(250)
 			time.Sleep(250 * time.Millisecond)
 			return
@@ -213,7 +237,7 @@ func processLocationUpdates(car *util.Car) {
 // subscribe to topics when MQTT client connects (or reconnects)
 func onMqttConnect(client mqtt.Client) {
 	for _, car := range cars {
-		log.Printf("Subscribing to MQTT topics for car %d", car.ID)
+		logger.Infof("Subscribing to MQTT topics for car %d", car.ID)
 
 		// define which topics are relevant for each car based on config
 		var topics []string
@@ -231,26 +255,29 @@ func onMqttConnect(client mqtt.Client) {
 			topicSubscribed := false
 			// retry topic subscription attempts with 1 sec delay between attempts
 			for retryAttempts := 5; retryAttempts > 0; retryAttempts-- {
+				fullTopic := fmt.Sprintf("teslamate/cars/%d/%s", car.ID, topic)
+				logger.Debugf("Subscribing to topic: %s", fullTopic)
 				if token := client.Subscribe(
-					fmt.Sprintf("teslamate/cars/%d/%s", car.ID, topic),
+					fullTopic,
 					0,
 					func(client mqtt.Client, message mqtt.Message) {
 						messageChan <- message
 					}); token.Wait() && token.Error() == nil {
 					topicSubscribed = true
+					logger.Debugf("Topic subscribed successfully: %s", fullTopic)
 					break
 				} else {
-					log.Printf("Failed to subscribe to topic %s for car %d, will make %d more attempts. Error: %v", topic, car.ID, retryAttempts, token.Error())
+					logger.Infof("Failed to subscribe to topic %s for car %d, will make %d more attempts. Error: %v", topic, car.ID, retryAttempts, token.Error())
 				}
 				time.Sleep(5 * time.Second)
 			}
 			if !topicSubscribed {
-				log.Fatalf("Unable to subscribe to topics, exiting")
+				logger.Fatalf("Unable to subscribe to topics, exiting")
 			}
 		}
 	}
 
-	log.Println("Topics subscribed, listening for events...")
+	logger.Info("Topics subscribed, listening for events...")
 }
 
 // check for env vars and validate that a myq_email and myq_pass exists
@@ -263,7 +290,7 @@ func checkEnvVars() {
 		util.Config.Global.MyQPass = value
 	}
 	if util.Config.Global.MyQEmail == "" || util.Config.Global.MyQPass == "" {
-		log.Fatal("MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
+		logger.Fatal("MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
 	}
 	if value, exists := os.LookupEnv("MQTT_USER"); exists {
 		util.Config.Global.MqttUser = value

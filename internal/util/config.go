@@ -2,11 +2,12 @@ package util
 
 import (
 	"encoding/xml"
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	logger "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,6 +101,10 @@ type (
 		GarageDoors []*GarageDoor `yaml:"garage_doors"`
 		Testing     bool
 	}
+
+	CustomFormatter struct {
+		logger.TextFormatter
+	}
 )
 
 var Config ConfigStruct
@@ -109,6 +114,36 @@ const (
 	CircularGeofenceType  = "CircularGeofence"  // circular geofence with center point and radius
 	TeslamateGeofenceType = "TeslamateGeofence" // geofence defined in teslamate
 )
+
+func init() {
+	logger.SetFormatter(&CustomFormatter{})
+	if val, ok := os.LookupEnv("DEBUG"); ok && strings.ToLower(val) == "true" {
+		logger.SetLevel(logger.DebugLevel)
+	}
+}
+
+// format log level to always have 5 characters between brackets (e.g. `[INFO ]`)
+func formatLevel(level logger.Level) string {
+	str := fmt.Sprintf("%-5s", level)
+	if len(str) > 5 {
+		return str[:5]
+	}
+	return strings.ToUpper(str)
+}
+
+// custom formatter for logrus package
+// 01/02/2006 15:04:05 [LEVEL] Message...
+func (f *CustomFormatter) Format(entry *logger.Entry) ([]byte, error) {
+	// Use the timestamp from the log entry to format it as you like
+	timestamp := entry.Time.Format("01/02/2006 15:04:05")
+
+	// Ensure the log level string is always 5 characters
+	paddedLevel := formatLevel(entry.Level)
+
+	// Combine the timestamp with the log level and the message
+	logMessage := fmt.Sprintf("%s [%s] %s\n", timestamp, paddedLevel, entry.Message)
+	return []byte(logMessage), nil
+}
 
 // checks for valid geofence values for a garage door
 // preferred priority is polygon > circular > teslamate
@@ -134,24 +169,38 @@ func (p Point) IsPointDefined() bool {
 
 // load yaml config
 func LoadConfig(configFile string) {
+	logger.Debugf("Attempting to read config file: %v", configFile)
 	yamlFile, err := os.ReadFile(configFile)
 	if err != nil {
-		log.Fatalf("Could not read config file: %v", err)
+		logger.Fatalf("Could not read config file: %v", err)
+	} else {
+		logger.Debug("Config file read successfully")
 	}
 
+	logger.Debug("Unmarshaling yaml into config object")
 	err = yaml.Unmarshal(yamlFile, &Config)
 	if err != nil {
-		log.Fatalf("Could not load yaml from config file, received error: %v", err)
+		logger.Fatalf("Could not load yaml from config file, received error: %v", err)
+	} else {
+		logger.Debug("Config yaml unmarshalled successfully")
 	}
 
+	logger.Debug("Checking garage door configs")
 	for _, g := range Config.GarageDoors {
 		// check if kml_file was defined, and if so, load and parse kml and set polygon geofences accordingly
 		if g.PolygonGeofence != nil && g.PolygonGeofence.KMLFile != "" {
-			loadKMLFile(g.PolygonGeofence)
+			logger.Debugf("KML file %s found, loading", g.PolygonGeofence.KMLFile)
+			if err := loadKMLFile(g.PolygonGeofence); err != nil {
+				logger.Warnf("Unable to load KML file: %v", err)
+			} else {
+				logger.Debug("KML file loaded successfully")
+			}
 		}
 		g.GeofenceType = g.GetGeofenceType()
 		if g.GeofenceType == "" {
-			log.Fatalf("error: no supported geofences defined for garage door %v", g)
+			logger.Fatalf("error: no supported geofences defined for garage door %v", g)
+		} else {
+			logger.Debugf("Garage door geofence type identified: %s", g.GeofenceType)
 		}
 
 		// initialize location update channel
@@ -160,7 +209,7 @@ func LoadConfig(configFile string) {
 		}
 	}
 
-	log.Println("Config loaded successfully")
+	logger.Info("Config loaded successfully")
 }
 
 // loads kml file and overrides polygon geofence points with parsed data
@@ -168,14 +217,14 @@ func loadKMLFile(p *PolygonGeofence) error {
 	fileContent, err := os.ReadFile(p.KMLFile)
 	lowerKML := strings.ToLower(string(fileContent)) // convert xml to lower to make xml tag parsing case insensitive
 	if err != nil {
-		log.Printf("Could not read file %s, received error: %e", p.KMLFile, err)
+		logger.Infof("Could not read file %s, received error: %e", p.KMLFile, err)
 		return err
 	}
 
 	var kml KML
 	err = xml.Unmarshal([]byte(lowerKML), &kml)
 	if err != nil {
-		log.Printf("Could not load kml from file %s, received error: %e", p.KMLFile, err)
+		logger.Infof("Could not load kml from file %s, received error: %e", p.KMLFile, err)
 		return err
 	}
 
@@ -198,12 +247,12 @@ func loadKMLFile(p *PolygonGeofence) error {
 			coords := strings.Split(c, ",")
 			lat, err := strconv.ParseFloat(coords[1], 64)
 			if err != nil {
-				log.Printf("Could not parse lng/lat coordinates from line %s, received error: %e", c, err)
+				logger.Infof("Could not parse lng/lat coordinates from line %s, received error: %e", c, err)
 				return err
 			}
 			lng, err := strconv.ParseFloat(coords[0], 64)
 			if err != nil {
-				log.Printf("Could not parse lng/lat coordinates from line %s, received error: %e", c, err)
+				logger.Infof("Could not parse lng/lat coordinates from line %s, received error: %e", c, err)
 				return err
 			}
 
