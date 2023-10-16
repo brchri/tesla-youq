@@ -266,7 +266,7 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 		myqExec.SetUsername(config.Global.MyQEmail)
 		myqExec.SetPassword(config.Global.MyQPass)
 		if err := myqExec.Login(); err != nil {
-			logger.Infof("ERROR: %v\n", err)
+			logger.Infof("ERROR: %v", err)
 			return err
 		}
 		logger.Info("Session acquired...")
@@ -290,7 +290,7 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 		return nil
 	}
 
-	logger.Infof("Waiting for door to %s...\n", action)
+	logger.Infof("Waiting for door to %s...", action)
 
 	var currentState string
 	deadline := time.Now().Add(60 * time.Second)
@@ -301,7 +301,7 @@ func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string)
 		}
 		if state != currentState {
 			if currentState != "" {
-				logger.Infof("Door state changed to %s\n", state)
+				logger.Infof("Door state changed to %s", state)
 			}
 			currentState = state
 		}
@@ -325,7 +325,7 @@ func GetGarageDoorSerials(config util.ConfigStruct) error {
 
 	logger.Info("Acquiring MyQ session...")
 	if err := s.Login(); err != nil {
-		logger.Errorf("ERROR: %v\n", err)
+		logger.Errorf("ERROR: %v", err)
 		return err
 	}
 	logger.Info("Session acquired...")
