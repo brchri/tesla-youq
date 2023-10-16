@@ -24,7 +24,7 @@ This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adrian
 
 ## How to use
 ### Docker
-This app is provided as a docker image. You will need to download the [config.example.yml](config.example.yml) file (or the simplified [config.simple.example.yml](config.simple.example.yml)), edit it appropriately, and then mount it to the container at runtime. For example:
+This app is provided as a docker image. You will need to download the [config.example.yml](config.example.yml) file (or the simplified [config.simple.example.yml](config.simple.example.yml)), edit it appropriately (***make sure to preserve the leading spaces, they are important***), and then mount it to the container at runtime. For example:
 
 ```bash
 # see docker compose example below for parameter explanations
@@ -83,6 +83,8 @@ docker run --rm \
 
 ### Geofence Types
 You can define 3 different types of geofences to trigger garage operations. You must configure *one and only one* geofence type for each garage door. Each geofence type has separate `open` and `close` configurations (though they can be set to the same values). This is useful for situations where you might want a smaller geofence that closes the door so you can visually confirm it's closing, but you want a larger geofence that opens the door so it will start sooner and be fully opened when you actually arrive.
+
+Note you do not need to define both `open` and `close` for a geofence, you may only define one or the other if you don't wish to have Tesla-YouQ both open and close your garage.
 
 #### Circular Geofence
 This is the simplist geofence to configure. You provide a latitude and longitude coordinate as the center point, and the distance from the center point to trigger the garage action (in kilometers). You can use a tool such as [FreeMapTools](https://www.freemaptools.com/radius-around-point.htm) to determine what the center latitude and longitude coordinates are, as well as how big your want your radius to be. An example of a garage door configured with this type of geofence would look like this:
