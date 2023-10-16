@@ -147,15 +147,16 @@ func (f *CustomFormatter) Format(entry *logger.Entry) ([]byte, error) {
 
 // checks for valid geofence values for a garage door
 // preferred priority is polygon > circular > teslamate
+// at least one open OR one close must be defined to identify a geofence type
 func (g GarageDoor) GetGeofenceType() string {
-	if g.PolygonGeofence != nil && len(g.PolygonGeofence.Open) > 0 && len(g.PolygonGeofence.Close) > 0 {
+	if g.PolygonGeofence != nil && (len(g.PolygonGeofence.Open) > 0 || len(g.PolygonGeofence.Close) > 0) {
 		return PolygonGeofenceType
-	} else if g.CircularGeofence != nil && g.CircularGeofence.Center.IsPointDefined() && g.CircularGeofence.OpenDistance > 0 && g.CircularGeofence.CloseDistance > 0 {
+	} else if g.CircularGeofence != nil && g.CircularGeofence.Center.IsPointDefined() && (g.CircularGeofence.OpenDistance > 0 || g.CircularGeofence.CloseDistance > 0) {
 		return CircularGeofenceType
-	} else if g.TeslamateGeofence != nil && g.TeslamateGeofence.Close.From != "" &&
-		g.TeslamateGeofence.Close.To != "" &&
-		g.TeslamateGeofence.Open.From != "" &&
-		g.TeslamateGeofence.Open.To != "" {
+	} else if g.TeslamateGeofence != nil && ((g.TeslamateGeofence.Close.From != "" &&
+		g.TeslamateGeofence.Close.To != "") ||
+		(g.TeslamateGeofence.Open.From != "" &&
+			g.TeslamateGeofence.Open.To != "")) {
 		return TeslamateGeofenceType
 	} else {
 		return ""
@@ -165,6 +166,10 @@ func (g GarageDoor) GetGeofenceType() string {
 func (p Point) IsPointDefined() bool {
 	// lat=0 lng=0 are valid coordinates, but they're in the middle of the ocean, so safe to assume these mean undefined
 	return p.Lat != 0 && p.Lng != 0
+}
+
+func (t TeslamateGeofenceTrigger) IsTriggerDefined() bool {
+	return t.From != "" && t.To != ""
 }
 
 // load yaml config
