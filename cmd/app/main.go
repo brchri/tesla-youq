@@ -24,7 +24,6 @@ import (
 )
 
 var (
-	debug       bool
 	configFile  string
 	cars        []*util.Car                  // list of all cars from all garage doors
 	version     string            = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
@@ -97,10 +96,6 @@ func parseArgs() {
 }
 
 func main() {
-	if value, exists := os.LookupEnv("TESTING"); exists {
-		util.Config.Testing, _ = strconv.ParseBool(value)
-	}
-
 	messageChan = make(chan mqtt.Message)
 
 	logger.Debug("Setting MQTT Opts:")
@@ -282,20 +277,32 @@ func onMqttConnect(client mqtt.Client) {
 
 // check for env vars and validate that a myq_email and myq_pass exists
 func checkEnvVars() {
+	logger.Debug("Checking environment variables:")
 	// override config with env vars if present
 	if value, exists := os.LookupEnv("MYQ_EMAIL"); exists {
+		logger.Debug("  MYQ_EMAIL defined, overriding config")
 		util.Config.Global.MyQEmail = value
 	}
 	if value, exists := os.LookupEnv("MYQ_PASS"); exists {
+		logger.Debug("  MYQ_PASS defined, overriding config")
 		util.Config.Global.MyQPass = value
 	}
 	if util.Config.Global.MyQEmail == "" || util.Config.Global.MyQPass == "" {
-		logger.Fatal("MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
+		logger.Fatal("  MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
 	}
 	if value, exists := os.LookupEnv("MQTT_USER"); exists {
+		logger.Debug("  MQTT_USER defined, overriding config")
 		util.Config.Global.MqttUser = value
 	}
 	if value, exists := os.LookupEnv("MQTT_PASS"); exists {
+		logger.Debug("  MQTT_PASS defined, overriding config")
 		util.Config.Global.MqttPass = value
+	}
+	if value, exists := os.LookupEnv("TESTING"); exists {
+		util.Config.Testing, _ = strconv.ParseBool(value)
+		logger.Debugf("  TESTING=%t", util.Config.Testing)
+	}
+	if value, exists := os.LookupEnv("DEBUG"); exists {
+		logger.Debugf("  DEBUG=%s", value)
 	}
 }

@@ -186,7 +186,13 @@ func LoadConfig(configFile string) {
 	}
 
 	logger.Debug("Checking garage door configs")
-	for _, g := range Config.GarageDoors {
+	if len(Config.GarageDoors) == 0 {
+		logger.Fatal("Unable to find garage doors in config! Please ensure proper spacing in the config file")
+	}
+	for i, g := range Config.GarageDoors {
+		if len(g.Cars) == 0 {
+			logger.Fatalf("No cars found for garage door #%d! Please ensure proper spacing in the config file", i)
+		}
 		// check if kml_file was defined, and if so, load and parse kml and set polygon geofences accordingly
 		if g.PolygonGeofence != nil && g.PolygonGeofence.KMLFile != "" {
 			logger.Debugf("KML file %s found, loading", g.PolygonGeofence.KMLFile)
