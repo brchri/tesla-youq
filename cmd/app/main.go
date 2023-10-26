@@ -14,39 +14,39 @@ import (
 	"syscall"
 	"time"
 
-	geo "github.com/brchri/tesla-youq/internal/geo"
+	"github.com/brchri/tesla-youq/internal/geo"
 	"github.com/google/uuid"
 	logger "github.com/sirupsen/logrus"
 
-	util "github.com/brchri/tesla-youq/internal/util"
+	"github.com/brchri/tesla-youq/internal/util"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 var (
 	configFile  string
-	cars        []*util.Car                  // list of all cars from all garage doors
+	cars        []*geo.Car                   // list of all cars from all garage doors
 	version     string            = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
 	messageChan chan mqtt.Message            // channel to receive mqtt messages
 )
 
 func init() {
 	logger.SetFormatter(&util.CustomFormatter{})
+	logger.SetOutput(os.Stdout)
 	if val, ok := os.LookupEnv("DEBUG"); ok && strings.ToLower(val) == "true" {
 		logger.SetLevel(logger.DebugLevel)
 	}
 	log.SetOutput(os.Stdout)
 	parseArgs()
 	util.LoadConfig(configFile)
+	geo.ParseGarageDoorConfig()
 	checkEnvVars()
-	for _, garageDoor := range util.Config.GarageDoors {
+	for _, garageDoor := range geo.GarageDoors {
 		for _, car := range garageDoor.Cars {
 			car.GarageDoor = garageDoor
 			cars = append(cars, car)
-			if car.GarageDoor.GeofenceType == util.PolygonGeofenceType {
-				car.InsidePolyCloseGeo = true
-				car.InsidePolyOpenGeo = true
-			}
+			car.InsidePolyCloseGeo = true // only relevent for polygon geos but won't be used if that's not the geofence type
+			car.InsidePolyOpenGeo = true  // only relevent for polygon geos but won't be used if that's not the geofence type
 			// start listening to car update location channels
 			go processLocationUpdates(car)
 		}
@@ -56,12 +56,10 @@ func init() {
 // parse args
 func parseArgs() {
 	// set up flags for parsing args
-	var getDevices bool
 	var getVersion bool
 	flag.StringVar(&configFile, "config", "", "location of config file")
 	flag.StringVar(&configFile, "c", "", "location of config file")
 	flag.BoolVar(&util.Config.Testing, "testing", false, "test case")
-	flag.BoolVar(&getDevices, "d", false, "get myq devices")
 	flag.BoolVar(&getVersion, "v", false, "print version info and return")
 	flag.BoolVar(&getVersion, "version", false, "print version info and return")
 	flag.Parse()
@@ -72,26 +70,18 @@ func parseArgs() {
 		os.Exit(0)
 	}
 
-	// only check for config if not getting devices
-	if !getDevices {
-		// if -c or --config wasn't passed, check for CONFIG_FILE env var
-		// if that fails, check for file at default location
-		if configFile == "" {
-			var exists bool
-			if configFile, exists = os.LookupEnv("CONFIG_FILE"); !exists {
-				logger.Fatalf("Config file must be defined with '-c' or 'CONFIG_FILE' environment variable")
-			}
+	// if -c or --config wasn't passed, check for CONFIG_FILE env var
+	// if that fails, check for file at default location
+	if configFile == "" {
+		var exists bool
+		if configFile, exists = os.LookupEnv("CONFIG_FILE"); !exists {
+			logger.Fatalf("Config file must be defined with '-c' or 'CONFIG_FILE' environment variable")
 		}
+	}
 
-		// check that ConfigFile exists
-		if _, err := os.Stat(configFile); err != nil {
-			logger.Fatalf("Config file %v doesn't exist!", configFile)
-		}
-	} else {
-		// if -d flag passed, get devices and exit
-		checkEnvVars()
-		geo.GetGarageDoorSerials(util.Config)
-		os.Exit(0)
+	// check that ConfigFile exists
+	if _, err := os.Stat(configFile); err != nil {
+		logger.Fatalf("Config file %v doesn't exist!", configFile)
 	}
 }
 
@@ -109,24 +99,24 @@ func main() {
 	opts.SetPingTimeout(10 * time.Second)
 	logger.Debug(" AutoReconnect: true")
 	opts.SetAutoReconnect(true)
-	if util.Config.Global.MqttUser != "" {
+	if util.Config.Global.Mqtt.User != "" {
 		logger.Debug(" Username: true <redacted value>")
 	} else {
 		logger.Debug(" Username: false (not set)")
 	}
-	opts.SetUsername(util.Config.Global.MqttUser) // if not defined, will just set empty strings and won't be used by pkg
-	if util.Config.Global.MqttPass != "" {
+	opts.SetUsername(util.Config.Global.Mqtt.User) // if not defined, will just set empty strings and won't be used by pkg
+	if util.Config.Global.Mqtt.Pass != "" {
 		logger.Debug(" Password: true <redacted value>")
 	} else {
 		logger.Debug(" Password: false (not set)")
 	}
-	opts.SetPassword(util.Config.Global.MqttPass) // if not defined, will just set empty strings and won't be used by pkg
+	opts.SetPassword(util.Config.Global.Mqtt.Pass) // if not defined, will just set empty strings and won't be used by pkg
 	opts.OnConnect = onMqttConnect
 
 	// set conditional MQTT client opts
-	if util.Config.Global.MqttClientID != "" {
-		logger.Debugf(" ClientID: %s", util.Config.Global.MqttClientID)
-		opts.SetClientID(util.Config.Global.MqttClientID)
+	if util.Config.Global.Mqtt.ClientID != "" {
+		logger.Debugf(" ClientID: %s", util.Config.Global.Mqtt.ClientID)
+		opts.SetClientID(util.Config.Global.Mqtt.ClientID)
 	} else {
 		// generate UUID for mqtt client connection if not specified in config file
 		id := uuid.New().String()
@@ -135,17 +125,17 @@ func main() {
 	}
 	logger.Debug(" Protocol: TCP")
 	mqttProtocol := "tcp"
-	if util.Config.Global.MqttUseTls {
+	if util.Config.Global.Mqtt.UseTls {
 		logger.Debug(" UseTLS: true")
-		logger.Debugf(" SkipTLSVerify: %t", util.Config.Global.MqttSkipTlsVerify)
+		logger.Debugf(" SkipTLSVerify: %t", util.Config.Global.Mqtt.SkipTlsVerify)
 		opts.SetTLSConfig(&tls.Config{
-			InsecureSkipVerify: util.Config.Global.MqttSkipTlsVerify,
+			InsecureSkipVerify: util.Config.Global.Mqtt.SkipTlsVerify,
 		})
 		mqttProtocol = "ssl"
 	} else {
 		logger.Debug(" UseTLS: false")
 	}
-	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.MqttHost, util.Config.Global.MqttPort)
+	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.Mqtt.Host, util.Config.Global.Mqtt.Port)
 	logger.Debugf(" Broker: %s", broker)
 	opts.AddBroker(broker)
 
@@ -171,7 +161,7 @@ func main() {
 			m := strings.Split(message.Topic(), "/")
 
 			// locate car and car's garage door
-			var car *util.Car
+			var car *geo.Car
 			for _, c := range cars {
 				if fmt.Sprintf("%d", c.ID) == m[2] {
 					car = c
@@ -185,20 +175,20 @@ func main() {
 				car.PrevGeofence = car.CurGeofence
 				car.CurGeofence = string(message.Payload())
 				logger.Infof("Received geo for car %d: %v", car.ID, car.CurGeofence)
-				go geo.CheckGeofence(util.Config, car)
+				go geo.CheckGeofence(car)
 			case "latitude":
 				logger.Debugf("Received lat for car %d: %v", car.ID, string(message.Payload()))
 				lat, _ := strconv.ParseFloat(string(message.Payload()), 64)
 				go func(lat float64) {
 					// send as goroutine so it doesn't block other vehicle updates if channel buffer is full
-					car.LocationUpdate <- util.Point{Lat: lat, Lng: 0}
+					car.LocationUpdate <- geo.Point{Lat: lat, Lng: 0}
 				}(lat)
 			case "longitude":
 				logger.Debugf("Received long for car %d: %v", car.ID, string(message.Payload()))
 				lng, _ := strconv.ParseFloat(string(message.Payload()), 64)
 				go func(lng float64) {
 					// send as goroutine so it doesn't block other vehicle updates if channel buffer is full
-					car.LocationUpdate <- util.Point{Lat: 0, Lng: lng}
+					car.LocationUpdate <- geo.Point{Lat: 0, Lng: lng}
 				}(lng)
 			}
 
@@ -215,7 +205,7 @@ func main() {
 // watches the LocationUpdate channel for a car and queues a CheckGeofence operation
 // this allows threaded geofence checks for multiple vehicles, while each individual vehicle
 // does not have parallel threads executing checks
-func processLocationUpdates(car *util.Car) {
+func processLocationUpdates(car *geo.Car) {
 	for update := range car.LocationUpdate {
 		if update.Lat != 0 {
 			car.CurrentLocation.Lat = update.Lat
@@ -224,7 +214,7 @@ func processLocationUpdates(car *util.Car) {
 			car.CurrentLocation.Lng = update.Lng
 		}
 		if car.CurrentLocation.IsPointDefined() {
-			geo.CheckGeofence(util.Config, car)
+			geo.CheckGeofence(car)
 		}
 	}
 }
@@ -235,15 +225,7 @@ func onMqttConnect(client mqtt.Client) {
 		logger.Infof("Subscribing to MQTT topics for car %d", car.ID)
 
 		// define which topics are relevant for each car based on config
-		var topics []string
-		switch car.GarageDoor.GeofenceType {
-		case util.PolygonGeofenceType:
-			topics = []string{"latitude", "longitude"}
-		case util.CircularGeofenceType:
-			topics = []string{"latitude", "longitude"}
-		case util.TeslamateGeofenceType:
-			topics = []string{"geofence"}
-		}
+		topics := car.GarageDoor.Geofence.GetMqttTopics()
 
 		// subscribe to topics
 		for _, topic := range topics {
@@ -279,24 +261,13 @@ func onMqttConnect(client mqtt.Client) {
 func checkEnvVars() {
 	logger.Debug("Checking environment variables:")
 	// override config with env vars if present
-	if value, exists := os.LookupEnv("MYQ_EMAIL"); exists {
-		logger.Debug("  MYQ_EMAIL defined, overriding config")
-		util.Config.Global.MyQEmail = value
+	if value, exists := os.LookupEnv("TESLAMATE_MQTT_USER"); exists {
+		logger.Debug("  TESLAMATE_MQTT_USER defined, overriding config")
+		util.Config.Global.Mqtt.User = value
 	}
-	if value, exists := os.LookupEnv("MYQ_PASS"); exists {
-		logger.Debug("  MYQ_PASS defined, overriding config")
-		util.Config.Global.MyQPass = value
-	}
-	if util.Config.Global.MyQEmail == "" || util.Config.Global.MyQPass == "" {
-		logger.Fatal("  MYQ_EMAIL and MYQ_PASS must be defined in the config file or as env vars")
-	}
-	if value, exists := os.LookupEnv("MQTT_USER"); exists {
-		logger.Debug("  MQTT_USER defined, overriding config")
-		util.Config.Global.MqttUser = value
-	}
-	if value, exists := os.LookupEnv("MQTT_PASS"); exists {
-		logger.Debug("  MQTT_PASS defined, overriding config")
-		util.Config.Global.MqttPass = value
+	if value, exists := os.LookupEnv("TESLAMATE_MQTT_PASS"); exists {
+		logger.Debug("  TESLAMATE_MQTT_PASS defined, overriding config")
+		util.Config.Global.Mqtt.Pass = value
 	}
 	if value, exists := os.LookupEnv("TESTING"); exists {
 		util.Config.Testing, _ = strconv.ParseBool(value)

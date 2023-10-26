@@ -1,124 +1,77 @@
 package geo
 
 import (
-	"fmt"
-	"io"
-	"math"
+	"errors"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/brchri/tesla-youq/internal/gdo"
 	util "github.com/brchri/tesla-youq/internal/util"
 	logger "github.com/sirupsen/logrus"
-
-	"github.com/brchri/myq"
+	"gopkg.in/yaml.v3"
 )
 
-// interface that allows api calls to myq to be abstracted and mocked by testing functions
-type MyqSessionInterface interface {
-	DeviceState(serialNumber string) (string, error)
-	Login() error
-	SetDoorState(serialNumber, action string) error
-	SetUsername(string)
-	SetPassword(string)
-	GetToken() string
-	SetToken(string)
-	New()
-}
-
-// implements MyqSessionInterface interface but is only a wrapper for the actual myq package
-type MyqSessionWrapper struct {
-	myqSession *myq.Session
-}
-
-func (m *MyqSessionWrapper) SetUsername(s string) {
-	m.myqSession.Username = s
-}
-
-func (m *MyqSessionWrapper) SetPassword(s string) {
-	m.myqSession.Password = s
-}
-
-func (m *MyqSessionWrapper) DeviceState(s string) (string, error) {
-	return m.myqSession.DeviceState(s)
-}
-
-func (m *MyqSessionWrapper) Login() error {
-	err := m.myqSession.Login()
-	// cache token if requested
-	if err == nil && util.Config.Global.CacheTokenFile != "" {
-		file, fileErr := os.OpenFile(util.Config.Global.CacheTokenFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-		if fileErr != nil {
-			logger.Infof("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
-		} else {
-			defer file.Close()
-
-			_, writeErr := file.WriteString(m.GetToken())
-			if writeErr != nil {
-				logger.Infof("WARNING: Unable to write to cache file %s", util.Config.Global.CacheTokenFile)
-			}
-		}
+type (
+	Point struct {
+		Lat float64 `yaml:"lat"`
+		Lng float64 `yaml:"lng"`
 	}
-	return err
-}
 
-func (m *MyqSessionWrapper) SetDoorState(serialNumber, action string) error {
-	return m.myqSession.SetDoorState(serialNumber, action)
-}
+	Car struct {
+		ID                 int         `yaml:"teslamate_car_id"` // mqtt identifier for vehicle
+		GarageDoor         *GarageDoor // bidirectional pointer to GarageDoor containing car
+		CurrentLocation    Point       // current vehicle location
+		LocationUpdate     chan Point  // channel to receive location updates
+		CurDistance        float64     // current distance from garagedoor location
+		PrevGeofence       string      // geofence previously ascribed to car
+		CurGeofence        string      // updated geofence ascribed to car when published to mqtt
+		InsidePolyOpenGeo  bool        // indicates if car is currently inside the polygon_open_geofence
+		InsidePolyCloseGeo bool        // indicates if car is currently inside the polygon_close_geofence
+	}
 
-func (m *MyqSessionWrapper) New() {
-	m.myqSession = &myq.Session{}
-}
+	// defines a garage door with one unique geofence type: circular, teslamate, or polygon
+	// only one geofence type may be defined per garage door
+	// if more than one defined, priority will be polygon > circular > teslamate
+	GarageDoor struct {
+		CircularGeofence  *CircularGeofence      `yaml:"circular_geofence"`
+		TeslamateGeofence *TeslamateGeofence     `yaml:"teslamate_geofence"`
+		PolygonGeofence   *PolygonGeofence       `yaml:"polygon_geofence"`
+		MyQSerial         string                 `yaml:"myq_serial"`
+		Cars              []*Car                 `yaml:"cars"`   // cars housed within this garage
+		OpenerConfig      map[string]interface{} `yaml:"opener"` // holds gdo config that is parsed on gdo.Initialize
+		OpLock            bool                   // controls if garagedoor has been operated recently to prevent flapping
+		GeofenceType      string                 // indicates whether garage door uses teslamate's geofence or not (checked during runtime)
+		Geofence          GeofenceInterface
+		Opener            gdo.GDO `yaml:"-"` // garage door opener; don't parse this from the garage door yaml
+	}
 
-func (m *MyqSessionWrapper) GetToken() string {
-	return m.myqSession.GetToken()
-}
+	GeofenceInterface interface {
+		getEventChangeAction(*Car) string
+		GetMqttTopics() []string
+	}
+)
 
-func (m *MyqSessionWrapper) SetToken(token string) {
-	m.myqSession.SetToken(token)
-}
-
-var myqExec MyqSessionInterface // executes myq package commands
+var GarageDoors []*GarageDoor
 
 func init() {
-	myqExec = &MyqSessionWrapper{}
-	myqExec.New()
 	logger.SetFormatter(&util.CustomFormatter{})
+	logger.SetOutput(os.Stdout)
 	if val, ok := os.LookupEnv("DEBUG"); ok && strings.ToLower(val) == "true" {
 		logger.SetLevel(logger.DebugLevel)
 	}
 }
 
-func distance(point1 util.Point, point2 util.Point) float64 {
-	// Calculate the distance between two points using the haversine formula
-	const radius = 6371 // Earth's radius in kilometers
-	lat1 := toRadians(point1.Lat)
-	lat2 := toRadians(point2.Lat)
-	deltaLat := toRadians(point2.Lat - point1.Lat)
-	deltaLon := toRadians(point2.Lng - point1.Lng)
-	a := math.Sin(deltaLat/2)*math.Sin(deltaLat/2) + math.Cos(lat1)*math.Cos(lat2)*math.Sin(deltaLon/2)*math.Sin(deltaLon/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	d := radius * c
-	return d
-}
-
-func toRadians(degrees float64) float64 {
-	return degrees * math.Pi / 180
+func (p Point) IsPointDefined() bool {
+	// lat=0 lng=0 are valid coordinates, but they're in the middle of the ocean, so safe to assume these mean undefined
+	return p.Lat != 0 && p.Lng != 0
 }
 
 // check if outside close geo or inside open geo and set garage door state accordingly
-func CheckGeofence(config util.ConfigStruct, car *util.Car) {
+func CheckGeofence(car *Car) {
 
 	// get action based on either geo cross events or distance threshold cross events
-	var action string
-	switch car.GarageDoor.GeofenceType {
-	case util.TeslamateGeofenceType:
-		action = getGeoChangeEventAction(config, car)
-	case util.CircularGeofenceType:
-		action = getDistanceChangeAction(config, car)
-	case util.PolygonGeofenceType:
-		action = getPolygonGeoChangeEventAction(config, car)
-	}
+	action := car.GarageDoor.Geofence.getEventChangeAction(car)
 
 	if action == "" || car.GarageDoor.OpLock {
 		return // only execute if there's a valid action to execute and the garage door isn't on cooldown
@@ -128,220 +81,113 @@ func CheckGeofence(config util.ConfigStruct, car *util.Car) {
 	// send operation to garage door and wait for timeout to release oplock
 	// run as goroutine to prevent blocking update channels from mqtt broker in main
 	go func() {
-		if car.GarageDoor.GeofenceType == util.TeslamateGeofenceType {
+		switch car.GarageDoor.Geofence.(type) {
+		case *TeslamateGeofence:
 			logger.Infof("Attempting to %s garage door for car %d", action, car.ID)
-		} else {
-			// if closing door based on lat and lng, print those values
+		default:
 			logger.Infof("Attempting to %s garage door for car %d at lat %f, long %f", action, car.ID, car.CurrentLocation.Lat, car.CurrentLocation.Lng)
 		}
 
 		// create retry loop to set the garage door state
 		for i := 1; i > 0; i-- { // temporarily setting to 1 to disable retry logic while myq auth endpoint stabilizes to avoid rate limiting
-			if err := setGarageDoor(config, car.GarageDoor.MyQSerial, action); err == nil {
-				// no error received, so breaking retry loop
+			err := car.GarageDoor.Opener.SetGarageDoor(action)
+			if err == nil {
+				// no error received, so breaking retry loop)
 				break
 			}
+			logger.Error(err)
 			if i == 1 {
-				logger.Info("Unable to set garage door state, no further attempts will be made")
+				logger.Warn("No further attempts will be made")
 			} else {
-				logger.Infof("Retrying set garage door state %d more time(s)", i-1)
+				logger.Warnf("Retrying set garage door state %d more time(s)", i-1)
 			}
 		}
 
-		time.Sleep(time.Duration(config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
-		car.GarageDoor.OpLock = false                                     // release garage door's operation lock
+		time.Sleep(time.Duration(util.Config.Global.OpCooldown) * time.Minute) // keep opLock true for OpCooldown minutes to prevent flapping in case of overlapping geofences
+		car.GarageDoor.OpLock = false                                          // release garage door's operation lock
 	}()
 }
 
-// gets action based on if there was a relevant distance change
-func getDistanceChangeAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if !car.CurrentLocation.IsPointDefined() {
-		return // need valid lat and lng to check fence
-	}
-
-	// update car's current distance, and store the previous distance in a variable
-	prevDistance := car.CurDistance
-	car.CurDistance = distance(car.CurrentLocation, car.GarageDoor.CircularGeofence.Center)
-
-	// check if car has crossed a geofence and set an appropriate action
-	if car.GarageDoor.CircularGeofence.CloseDistance > 0 && // is valid close distance defined
-		prevDistance <= car.GarageDoor.CircularGeofence.CloseDistance &&
-		car.CurDistance > car.GarageDoor.CircularGeofence.CloseDistance { // car was within close geofence, but now beyond it (car left geofence)
-		action = myq.ActionClose
-	} else if car.GarageDoor.CircularGeofence.OpenDistance > 0 && // is valid open distance defined
-		prevDistance >= car.GarageDoor.CircularGeofence.OpenDistance &&
-		car.CurDistance < car.GarageDoor.CircularGeofence.OpenDistance { // car was outside of open geofence, but is now within it (car entered geofence)
-		action = myq.ActionOpen
-	}
-	return
-}
-
-// gets action based on if there was a relevant geofence event change
-func getGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if car.GarageDoor.TeslamateGeofence.Close.IsTriggerDefined() &&
-		car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Close.From &&
-		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Close.To {
-		action = "close"
-	} else if car.GarageDoor.TeslamateGeofence.Open.IsTriggerDefined() &&
-		car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Open.From &&
-		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Open.To {
-		action = "open"
-	}
-	return
-}
-
-// get action based on whether we had a polygon geofence change event
-// uses ray-casting algorithm, assumes a simple geofence (no holes or border cross points)
-func getPolygonGeoChangeEventAction(config util.ConfigStruct, car *util.Car) (action string) {
-	if !car.CurrentLocation.IsPointDefined() {
-		return // need valid lat and long to check geofence
-	}
-
-	isInsideCloseGeo := isInsidePolygonGeo(car.CurrentLocation, car.GarageDoor.PolygonGeofence.Close)
-	isInsideOpenGeo := isInsidePolygonGeo(car.CurrentLocation, car.GarageDoor.PolygonGeofence.Open)
-
-	if car.GarageDoor.PolygonGeofence.Close != nil && car.InsidePolyCloseGeo && !isInsideCloseGeo { // if we were inside the close geofence and now we're not, then close
-		action = "close"
-	} else if car.GarageDoor.PolygonGeofence.Open != nil && !car.InsidePolyOpenGeo && isInsideOpenGeo { // if we were not inside the open geo and now we are, then open
-		action = "open"
-	}
-
-	car.InsidePolyCloseGeo = isInsideCloseGeo
-	car.InsidePolyOpenGeo = isInsideOpenGeo
-
-	return
-}
-
-func isInsidePolygonGeo(p util.Point, geofence []util.Point) bool {
-	var intersections int
-	j := len(geofence) - 1
-
-	for i := 0; i < len(geofence); i++ {
-		if ((geofence[i].Lat > p.Lat) != (geofence[j].Lat > p.Lat)) &&
-			p.Lng < (geofence[j].Lng-geofence[i].Lng)*(p.Lat-geofence[i].Lat)/(geofence[j].Lat-geofence[i].Lat)+geofence[i].Lng {
-			intersections++
-		}
-		j = i
-	}
-
-	return intersections%2 == 1 // are we currently inside a polygon geo
-}
-
-func setGarageDoor(config util.ConfigStruct, deviceSerial string, action string) error {
-	var desiredState string
-	switch action {
-	case myq.ActionOpen:
-		desiredState = myq.StateOpen
-	case myq.ActionClose:
-		desiredState = myq.StateClosed
-	}
-
-	if config.Testing {
-		logger.Infof("TESTING flag set - Would attempt action %v", action)
-		return nil
-	}
-
-	// check for cached token if we haven't retrieved it already
-	if util.Config.Global.CacheTokenFile != "" && myqExec.GetToken() == "" {
-		file, err := os.Open(util.Config.Global.CacheTokenFile)
-		if err != nil {
-			logger.Infof("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
-		} else {
-			defer file.Close()
-
-			data, err := io.ReadAll(file)
-			if err != nil {
-				logger.Infof("WARNING: Unable to read token cache from %s", util.Config.Global.CacheTokenFile)
-			} else {
-				myqExec.SetToken(string(data))
-			}
-		}
-	}
-
-	curState, err := myqExec.DeviceState(deviceSerial)
-	if err != nil {
-		// fetching device state may have failed due to invalid session token; try fresh login to resolve
-		logger.Info("Acquiring MyQ session...")
-		myqExec.New()
-		myqExec.SetUsername(config.Global.MyQEmail)
-		myqExec.SetPassword(config.Global.MyQPass)
-		if err := myqExec.Login(); err != nil {
-			logger.Infof("ERROR: %v", err)
-			return err
-		}
-		logger.Info("Session acquired...")
-		curState, err = myqExec.DeviceState(deviceSerial)
-		if err != nil {
-			logger.Infof("Couldn't get device state: %v", err)
-			return err
-		}
-	}
-
-	logger.Infof("Requested action: %v, Current state: %v", action, curState)
-	if (action == myq.ActionOpen && curState == myq.StateClosed) || (action == myq.ActionClose && curState == myq.StateOpen) {
-		logger.Infof("Attempting action: %v", action)
-		err := myqExec.SetDoorState(deviceSerial, action)
-		if err != nil {
-			logger.Infof("Unable to set door state: %v", err)
-			return err
-		}
+// checks for valid geofence values for a garage door
+// preferred priority is polygon > circular > teslamate
+// at least one open OR one close must be defined to identify a geofence type
+func (g *GarageDoor) SetGeofenceType() error {
+	var geoType string
+	if g.PolygonGeofence != nil &&
+		(len(g.PolygonGeofence.Open) > 0 ||
+			len(g.PolygonGeofence.Close) > 0) {
+		g.Geofence = g.PolygonGeofence
+		geoType = "Polygon"
+	} else if g.CircularGeofence != nil &&
+		g.CircularGeofence.Center.IsPointDefined() &&
+		(g.CircularGeofence.OpenDistance > 0 ||
+			g.CircularGeofence.CloseDistance > 0) {
+		g.Geofence = g.CircularGeofence
+		geoType = "Circular"
+	} else if g.TeslamateGeofence != nil &&
+		(g.TeslamateGeofence.Close.IsTriggerDefined() ||
+			g.TeslamateGeofence.Open.IsTriggerDefined()) {
+		g.Geofence = g.TeslamateGeofence
+		geoType = "Teslamate"
 	} else {
-		logger.Infof("Action and state mismatch: garage state is not valid for executing requested action")
-		return nil
+		return errors.New("unable to determine geofence type for garage door")
 	}
-
-	logger.Infof("Waiting for door to %s...", action)
-
-	var currentState string
-	deadline := time.Now().Add(60 * time.Second)
-	for time.Now().Before(deadline) {
-		state, err := myqExec.DeviceState(deviceSerial)
-		if err != nil {
-			return err
-		}
-		if state != currentState {
-			if currentState != "" {
-				logger.Infof("Door state changed to %s", state)
-			}
-			currentState = state
-		}
-		if currentState == desiredState {
-			break
-		}
-		time.Sleep(5 * time.Second)
-	}
-
-	if currentState != desiredState {
-		return fmt.Errorf("timed out waiting for door to be %s", desiredState)
-	}
-
+	logger.Debugf("Garage door geofence type identified: %s", geoType)
 	return nil
 }
 
-func GetGarageDoorSerials(config util.ConfigStruct) error {
-	s := &myq.Session{}
-	s.Username = config.Global.MyQEmail
-	s.Password = config.Global.MyQPass
-
-	logger.Info("Acquiring MyQ session...")
-	if err := s.Login(); err != nil {
-		logger.Errorf("ERROR: %v", err)
-		return err
-	}
-	logger.Info("Session acquired...")
-
-	devices, err := s.Devices()
+func ParseGarageDoorConfig() {
+	// marshall map[string]interface into yaml, then unmarshal to object based on yaml def in struct
+	yamlData, err := yaml.Marshal(util.Config.GarageDoors)
 	if err != nil {
-		logger.Infof("Could not get devices: %v", err)
-		return err
+		logger.Fatal("Failed to marhsal garage doors yaml object")
 	}
-	for _, d := range devices {
-		logger.Infof("Device Name: %v", d.Name)
-		logger.Infof("Device State: %v", d.DoorState)
-		logger.Infof("Device Type: %v", d.Type)
-		logger.Infof("Device Serial: %v", d.SerialNumber)
-		fmt.Println()
+	err = yaml.Unmarshal(yamlData, &GarageDoors)
+	if err != nil {
+		logger.Fatal("Failed to unmarhsal garage doors yaml object")
 	}
 
-	return nil
+	logger.Debug("Checking garage door configs")
+	if len(GarageDoors) == 0 {
+		logger.Fatal("Unable to find garage doors in config! Please ensure proper spacing in the config file")
+	}
+	for i, g := range GarageDoors {
+		if len(g.Cars) == 0 {
+			logger.Fatalf("No cars found for garage door #%d! Please ensure proper spacing in the config file", i)
+		}
+		// check if kml_file was defined, and if so, load and parse kml and set polygon geofences accordingly
+		if g.PolygonGeofence != nil && g.PolygonGeofence.KMLFile != "" {
+			logger.Debugf("KML file %s found, loading", g.PolygonGeofence.KMLFile)
+			if err := loadKMLFile(g.PolygonGeofence); err != nil {
+				logger.Warnf("Unable to load KML file: %v", err)
+			} else {
+				logger.Debug("KML file loaded successfully")
+			}
+		}
+		err = g.SetGeofenceType()
+		if err != nil {
+			logger.Fatalf("error: no supported geofences defined for garage door %v", g)
+		} else {
+			var geoType string
+			switch g.Geofence.(type) {
+			case *TeslamateGeofence:
+				geoType = "Teslamate"
+			case *PolygonGeofence:
+				geoType = "Polygon"
+			case *CircularGeofence:
+				geoType = "Circular"
+			}
+			logger.Debugf("Garage door geofence type identified: %s", geoType)
+		}
+
+		g.Opener, err = gdo.Initialize(g.OpenerConfig)
+		if err != nil {
+			logger.Fatal("Couldn't initialize garage door opener module")
+		}
+
+		// initialize location update channel
+		for _, c := range g.Cars {
+			c.LocationUpdate = make(chan Point, 2)
+		}
+	}
 }

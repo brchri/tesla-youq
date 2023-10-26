@@ -2,10 +2,9 @@
 # To keep it clean, it won't explain any parameters; please refer to the full config.example.yml file for parameter explanations
 
 global:
-  mqtt_host: localhost
-  mqtt_port: 1883
-  myq_email: myq@example.com
-  myq_pass: super_secret_password
+  teslamate_mqtt_settings:
+    host: localhost
+    port: 1883
 
 garage_doors:
   - circular_geofence:
@@ -14,6 +13,11 @@ garage_doors:
         lng: -123.79965087116439
       close_distance: .013
       open_distance: .04
-    myq_serial: myq_serial_1
+    opener:
+      type: ratgdo
+      mqtt_settings:
+        host: localhost
+        port: 1883
+        prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1

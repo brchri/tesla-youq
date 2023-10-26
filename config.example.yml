@@ -10,18 +10,15 @@
 # Spacing is very important in this file, particularly the leading spacing (indentations). Failure to properly indent may cause config parsing to fail silently
 
 global:
-  mqtt_host: localhost # dns, container name, or IP of teslamate's mqtt host
-  mqtt_port: 1883
-  mqtt_client_id: tesla-youq # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
-  mqtt_user: mqtt_user # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_USER
-  mqtt_pass: mqtt_pass # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_PASS
-  mqtt_use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-  mqtt_skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+  teslamate_mqtt_settings: # settings for teslamate's mqtt broker
+    host: localhost # dns, container name, or IP of teslamate's mqtt host
+    port: 1883
+    client_id: tesla-youq # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+    user: mqtt_user # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_USER
+    pass: mqtt_pass # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_PASS
+    use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+    skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
   cooldown: 5 # minutes to wait after operating garage before allowing another garage operation
-  myq_email: myq@example.com # email to auth to myq account; can also be passed as env var MYQ_EMAIL
-  myq_pass: super_secret_password # password to auth to myq account; can also be passed as env var MYQ_PASS
-  cache_token_file: config/token_cache.txt # location to cache myq auth token; omit to disable caching token; useful to prevent generating too many myq auth requests, especially when testing
-  # WARNING: using cache_token_file will store your auth token in plaintext at the specified location!
 
 garage_doors:
   - # main garage example
@@ -31,7 +28,18 @@ garage_doors:
         lng: -123.79965087116439
       close_distance: .013 # distance in kilometers car must travel away from garage location to close garage door
       open_distance: .04 # distance in kilometers car must be in range of garage location while traveling closer to it to open garage door
-    myq_serial: myq_serial_1 # serial number of garage door opener; see README for more info
+    opener:
+      type: ratgdo # currently ratgdo (mqtt version) is the only supported type
+      mqtt_settings: # mqtt broker settings for ratgdo
+        host: localhost # dns, container name, or IP of ratgdo's mqtt host
+        port: 1883
+        client_id: tesla-youq-ratgdo1 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+        # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
+        user: mqtt_user # optional, only define if your mqtt broker requires authentication
+        pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
+        use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+        skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+        prefix: home/garage/Main
     cars: # list of cars that use this garage door
       - teslamate_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
@@ -44,7 +52,18 @@ garage_doors:
       open_trigger: # define which geofence changes trigger an open action (e.g. moving from `not_home` geofence to `home`)
         from: not_home
         to: home
-    myq_serial: myq_serial_2 # serial number of garage door opener; see README for more info
+    opener:
+      type: ratgdo # currently ratgdo (mqtt version) is the only supported type
+      mqtt_settings: # mqtt broker settings for ratgdo
+        host: localhost # dns, container name, or IP of ratgdo's mqtt host
+        port: 1883
+        client_id: tesla-youq-ratgdo2 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+        # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
+        user: mqtt_user # optional, only define if your mqtt broker requires authentication
+        pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
+        use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+        skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+        prefix: home/garage/3rdCar
     cars:
       - teslamate_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
   
@@ -81,6 +100,17 @@ garage_doors:
           lng: -123.79950958978756
         - lat: 46.192958467582514
           lng: -123.7998033090239
-    myq_serial: myq_serial_3 # serial number of garage door opener; see README for more info
+    opener:
+      type: ratgdo # currently ratgdo (mqtt version) is the only supported type
+      mqtt_settings: # mqtt broker settings for ratgdo
+        host: localhost # dns, container name, or IP of ratgdo's mqtt host
+        port: 1883
+        client_id: tesla-youq-ratgdo3 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+        # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
+        user: mqtt_user # optional, only define if your mqtt broker requires authentication
+        pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
+        use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+        skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+        prefix: home/garage/4thCar
     cars:
       - teslamate_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker
