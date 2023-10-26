@@ -1,15 +1,15 @@
 # Tesla-YouQ
-A lightweight app that will operate your MyQ connected garage doors based on the location of your Tesla vehicles, automatically closing when you leave, and opening when you return. Supports multiple vehicles and MyQ devices.
+A lightweight app that will operate your smart connected garage doors based on the location of your Tesla vehicles, automatically closing when you leave, and opening when you return. Supports multiple vehicles and smart garage door opener devices.
 
 <!-- TOC -->
 
 - [Tesla-YouQ](#tesla-youq)
+  - [Supported Smart Garage Door Openers](#supported-smart-garage-door-openers)
   - [Prerequisite](#prerequisite)
   - [How to use](#how-to-use)
     - [Docker](#docker)
     - [Supported Environment Variables](#supported-environment-variables)
   - [Notes](#notes)
-    - [Serials](#serials)
     - [Geofence Types](#geofence-types)
       - [Circular Geofence](#circular-geofence)
       - [TeslaMate Defined Geofence](#teslamate-defined-geofence)
@@ -18,6 +18,15 @@ A lightweight app that will operate your MyQ connected garage doors based on the
   - [Credits](#credits)
 
 <!-- /TOC -->
+
+## Supported Smart Garage Door Openers
+* Current
+  * [ratgdo](https://paulwieland.github.io/ratgdo/) (MQTT Configuration)
+* Deprecated:
+  * MyQ
+    * No longer supported due to MyQ API changes blocking 3rd party integrations
+* Potentially Upcoming
+  * [Meross](https://www.meross.com/en-gc/product) (if I get my hands on one or can use someone else's package to incorporate)
 
 ## Prerequisite
 This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adriankumpf/teslamate). You must be running TeslaMate and have the MQTT broker exposed for consumption to use this app. TeslaMate has done a lot of work in scraping API data while minimizing vampire drain on vehicles from API requests, and TeslaMate has many other features that make it more than worthwhile to use in addition to this app.
@@ -30,8 +39,6 @@ This app is provided as a docker image. You will need to download the [config.ex
 # see docker compose example below for parameter explanations
 docker run \
   --user 1000:1000 \
-  -e MYQ_EMAIL=my_email@address.com \
-  -e MYQ_PASS=my_super_secret_pass \
   -e TZ=America/New_York \
   -v /etc/tesla-youq:/app/config \
   brchri/tesla-youq:latest
@@ -47,8 +54,6 @@ services:
     container_name: tesla-youq
     user: 1000:1000 # optional, sets user to run in container; must have read access to mounted config volume (+ write if using token caching)
     environment:
-      - MYQ_EMAIL=my_email@address.com # optional, can also be saved in the config.yml file
-      - MYQ_PASS=my_super_secret_pass # optional, can also be saved in the config.yml file
       - TZ=America/New_York # optional, sets timezone for container
     volumes:
       - /etc/tesla-youq:/app/config # required, mounts folder containing config file(s) into container
@@ -60,27 +65,13 @@ The following Docker environment variables are supported but not required.
 | Variable Name | Type | Description |
 | ------------- | ---- | ----------- |
 | `CONFIG_FILE` | String (Filepath) | Path to config file within container |
-| `MYQ_EMAIL` | String | Email to authenticate to MyQ account. Can be used instead of setting `myq_email` in the `config.yml` file |
-| `MYQ_PASS` | String | Password to authenticate to MyQ account. Can be used instead of setting `myq_pass` in the `config.yml` file |
-| `MQTT_USER` | String | User to authenticate to MQTT broker. Can be used instead of setting `mqtt_user` in the `config.yml` file |
-| `MQTT_PASS` | String | Password to authenticate to MQTT broker. Can be used instead of setting `mqtt_pass` in the `config.yml` file |
+| `TESLAMATE_MQTT_USER` | String | User to authenticate to MQTT broker. Can be used instead of setting `teslamate.mqtt.user` in the `config.yml` file |
+| `TESLAMATE_MQTT_PASS` | String | Password to authenticate to MQTT broker. Can be used instead of setting `teslamate.mqtt.pass` in the `config.yml` file |
 | `DEBUG` | Bool | Increases output verbosity |
 | `TESTING` | Bool | Will perform all functions *except* actually operating garage door, and will just output operation *would've* happened |
 | `TZ` | String | Sets timezone for container |
 
 ## Notes
-
-### Serials
-The serial displayed in your MyQ app may not be the serial used to control your door (e.g. it may be the hub rather than the opener). You can run this app with the `-d` flag to list your device serials and pick the appropriate one (listed with `type: garagedooropener`). Example:
-
-```shell
-docker run --rm \
-  -e MYQ_EMAIL=myq@example.com \
-  -e MYQ_PASS=supersecretpass \
-  brchri/tesla-youq:latest \
-  tesla-youq -d
-```
-
 ### Geofence Types
 You can define 3 different types of geofences to trigger garage operations. You must configure *one and only one* geofence type for each garage door. Each geofence type has separate `open` and `close` configurations (though they can be set to the same values). This is useful for situations where you might want a smaller geofence that closes the door so you can visually confirm it's closing, but you want a larger geofence that opens the door so it will start sooner and be fully opened when you actually arrive.
 
@@ -97,7 +88,12 @@ garage_doors:
         lng: -123.79965087116439
       close_distance: .013
       open_distance: .04
-    myq_serial: myq_serial_1
+    opener:
+      type: ratgdo
+      mqtt_settings:
+        host: localhost
+        port: 1833
+        prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
 ```
@@ -125,7 +121,12 @@ garage_doors:
       open_trigger:
         from: not_home
         to: home
-    myq_serial: myq_serial_1
+    opener:
+      type: ratgdo
+      mqtt_settings:
+        host: localhost
+        port: 1833
+        prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
 ```
@@ -168,7 +169,12 @@ garage_doors:
           lng: -123.79950958978756
         - lat: 46.192958467582514
           lng: -123.7998033090239
-    myq_serial: myq_serial_1
+    opener:
+      type: ratgdo
+      mqtt_settings:
+        host: localhost
+        port: 1833
+        prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
 ```
@@ -181,7 +187,12 @@ An example of a garage door configured this way would look like this:
 garage_doors:
   - polygon_geofence:
       kml_file: config/polygon_geofences.kml
-    myq_serial: myq_serial_1
+    opener:
+      type: ratgdo
+      mqtt_settings:
+        host: localhost
+        port: 1833
+        prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
 ```
@@ -197,4 +208,4 @@ There's a configurable `cooldown` parameter in the `config.yml` file's `global` 
 
 ## Credits
 * [TeslaMate](https://github.com/adriankumpf/teslamate)
-* [MyQ API Go Package](https://github.com/joeshaw/myq)
+* [Ratgdo](https://paulwieland.github.io/ratgdo/)
