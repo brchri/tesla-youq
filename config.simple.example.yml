@@ -3,8 +3,9 @@
 
 global:
   teslamate_mqtt_settings:
-    host: localhost
-    port: 1883
+    connection: &mqtt_connection_settings
+      host: localhost
+      port: 1883
 
 garage_doors:
   - circular_geofence:
@@ -16,8 +17,7 @@ garage_doors:
     opener:
       type: ratgdo
       mqtt_settings:
-        host: localhost
-        port: 1883
+        connection: *mqtt_connection_settings
         prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1

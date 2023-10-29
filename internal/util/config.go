@@ -12,22 +12,23 @@ import (
 type (
 	ConfigStruct struct {
 		Global struct {
-			Mqtt struct {
-				Host          string `yaml:"host"`
-				Port          int    `yaml:"port"`
-				ClientID      string `yaml:"client_id"`
-				User          string `yaml:"user"`
-				Pass          string `yaml:"pass"`
-				UseTls        bool   `yaml:"use_tls"`
-				SkipTlsVerify bool   `yaml:"skip_tls_verify"`
+			MqttSettings struct {
+				Connection MqttConnectSettings `yaml:"connection"`
 			} `yaml:"teslamate_mqtt_settings"`
-			OpCooldown     int    `yaml:"cooldown"`
-			MyQEmail       string `yaml:"myq_email"`
-			MyQPass        string `yaml:"myq_pass"`
-			CacheTokenFile string `yaml:"cache_token_file"`
+			OpCooldown int `yaml:"cooldown"`
 		} `yaml:"global"`
 		GarageDoors []*map[string]interface{} `yaml:"garage_doors"` // this will be parsed properly later by the geo package
 		Testing     bool
+	}
+
+	MqttConnectSettings struct {
+		Host          string `yaml:"host"`
+		Port          int    `yaml:"port"`
+		ClientID      string `yaml:"client_id"`
+		User          string `yaml:"user"`
+		Pass          string `yaml:"pass"`
+		UseTls        bool   `yaml:"use_tls"`
+		SkipTlsVerify bool   `yaml:"skip_tls_verify"`
 	}
 
 	CustomFormatter struct {
@@ -47,9 +48,9 @@ func init() {
 
 // format log level to always have 5 characters between brackets (e.g. `[INFO ]`)
 func formatLevel(level logger.Level) string {
-	str := fmt.Sprintf("%-5s", level)
-	if len(str) > 5 {
-		return strings.ToUpper(str[:5])
+	str := fmt.Sprintf("%-7s", level)
+	if len(str) > 7 {
+		return strings.ToUpper(str[:7])
 	}
 	return strings.ToUpper(str)
 }

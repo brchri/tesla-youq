@@ -24,10 +24,11 @@ import (
 )
 
 var (
-	configFile  string
-	cars        []*geo.Car                   // list of all cars from all garage doors
-	version     string            = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
-	messageChan chan mqtt.Message            // channel to receive mqtt messages
+	configFile   string
+	cars         []*geo.Car                           // list of all cars from all garage doors
+	version      string                    = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
+	messageChan  chan mqtt.Message                    // channel to receive mqtt messages
+	mqttSettings *util.MqttConnectSettings            // point to util.Config.Global.MqttSettings.Connection for shorter reference
 )
 
 func init() {
@@ -39,6 +40,7 @@ func init() {
 	log.SetOutput(os.Stdout)
 	parseArgs()
 	util.LoadConfig(configFile)
+	mqttSettings = &util.Config.Global.MqttSettings.Connection
 	geo.ParseGarageDoorConfig()
 	checkEnvVars()
 	for _, garageDoor := range geo.GarageDoors {
@@ -99,24 +101,24 @@ func main() {
 	opts.SetPingTimeout(10 * time.Second)
 	logger.Debug(" AutoReconnect: true")
 	opts.SetAutoReconnect(true)
-	if util.Config.Global.Mqtt.User != "" {
+	if mqttSettings.User != "" {
 		logger.Debug(" Username: true <redacted value>")
 	} else {
 		logger.Debug(" Username: false (not set)")
 	}
-	opts.SetUsername(util.Config.Global.Mqtt.User) // if not defined, will just set empty strings and won't be used by pkg
-	if util.Config.Global.Mqtt.Pass != "" {
+	opts.SetUsername(mqttSettings.User) // if not defined, will just set empty strings and won't be used by pkg
+	if mqttSettings.Pass != "" {
 		logger.Debug(" Password: true <redacted value>")
 	} else {
 		logger.Debug(" Password: false (not set)")
 	}
-	opts.SetPassword(util.Config.Global.Mqtt.Pass) // if not defined, will just set empty strings and won't be used by pkg
+	opts.SetPassword(mqttSettings.Pass) // if not defined, will just set empty strings and won't be used by pkg
 	opts.OnConnect = onMqttConnect
 
 	// set conditional MQTT client opts
-	if util.Config.Global.Mqtt.ClientID != "" {
-		logger.Debugf(" ClientID: %s", util.Config.Global.Mqtt.ClientID)
-		opts.SetClientID(util.Config.Global.Mqtt.ClientID)
+	if mqttSettings.ClientID != "" {
+		logger.Debugf(" ClientID: %s", mqttSettings.ClientID)
+		opts.SetClientID(mqttSettings.ClientID)
 	} else {
 		// generate UUID for mqtt client connection if not specified in config file
 		id := uuid.New().String()
@@ -125,17 +127,17 @@ func main() {
 	}
 	logger.Debug(" Protocol: TCP")
 	mqttProtocol := "tcp"
-	if util.Config.Global.Mqtt.UseTls {
+	if mqttSettings.UseTls {
 		logger.Debug(" UseTLS: true")
-		logger.Debugf(" SkipTLSVerify: %t", util.Config.Global.Mqtt.SkipTlsVerify)
+		logger.Debugf(" SkipTLSVerify: %t", mqttSettings.SkipTlsVerify)
 		opts.SetTLSConfig(&tls.Config{
-			InsecureSkipVerify: util.Config.Global.Mqtt.SkipTlsVerify,
+			InsecureSkipVerify: mqttSettings.SkipTlsVerify,
 		})
 		mqttProtocol = "ssl"
 	} else {
 		logger.Debug(" UseTLS: false")
 	}
-	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, util.Config.Global.Mqtt.Host, util.Config.Global.Mqtt.Port)
+	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, mqttSettings.Host, mqttSettings.Port)
 	logger.Debugf(" Broker: %s", broker)
 	opts.AddBroker(broker)
 
@@ -147,7 +149,7 @@ func main() {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		logger.Fatalf("could not connect to mqtt broker: %v", token.Error())
 	} else {
-		logger.Info("Connected to MQTT broker")
+		logger.Info("Connected to Teslamate MQTT broker")
 	}
 	logger.Debugf("MQTT Broker Connected: %t", client.IsConnected())
 
@@ -263,11 +265,11 @@ func checkEnvVars() {
 	// override config with env vars if present
 	if value, exists := os.LookupEnv("TESLAMATE_MQTT_USER"); exists {
 		logger.Debug("  TESLAMATE_MQTT_USER defined, overriding config")
-		util.Config.Global.Mqtt.User = value
+		mqttSettings.User = value
 	}
 	if value, exists := os.LookupEnv("TESLAMATE_MQTT_PASS"); exists {
 		logger.Debug("  TESLAMATE_MQTT_PASS defined, overriding config")
-		util.Config.Global.Mqtt.Pass = value
+		mqttSettings.Pass = value
 	}
 	if value, exists := os.LookupEnv("TESTING"); exists {
 		util.Config.Testing, _ = strconv.ParseBool(value)

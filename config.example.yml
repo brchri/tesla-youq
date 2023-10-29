@@ -1,7 +1,7 @@
 # This is an example config file with all available options and explanations for anything that isn't necessarily obvious.
 # For a simpler example, please refer to the config.simple.example.yml file. Please also refer to the README for more information.
 
-# In this config example, there are three garage doors we wish to control that are connected to the same account.
+# In this config example, there are three garage doors we wish to control; 2 with ratgdo controllers, and 1 with a generic mqtt controller
 # The first garage door houses 2 Tesla vehicles, while the second and third garage doors house a single Tesla vehicle each.
 # Anytime a garage door is operated by this app, it will wait the configured 5 minutes "cooldown" before allowing
 # further operations on that specific garage door.
@@ -11,13 +11,14 @@
 
 global:
   teslamate_mqtt_settings: # settings for teslamate's mqtt broker
-    host: localhost # dns, container name, or IP of teslamate's mqtt host
-    port: 1883
-    client_id: tesla-youq # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
-    user: mqtt_user # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_USER
-    pass: mqtt_pass # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_PASS
-    use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-    skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+    connection: &mqtt_connection_settings # optional, define a yaml anchor to re-use these connection settings for the garage door openers
+      host: localhost # dns, container name, or IP of teslamate's mqtt host
+      port: 1883
+      client_id: tesla-youq # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+      user: mqtt_user # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_USER
+      pass: mqtt_pass # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_PASS
+      use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+      skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
   cooldown: 5 # minutes to wait after operating garage before allowing another garage operation
 
 garage_doors:
@@ -29,21 +30,23 @@ garage_doors:
       close_distance: .013 # distance in kilometers car must travel away from garage location to close garage door
       open_distance: .04 # distance in kilometers car must be in range of garage location while traveling closer to it to open garage door
     opener:
-      type: ratgdo # currently ratgdo (mqtt version) is the only supported type
+      type: ratgdo # type of garage door opener to use (currently ratgdo and mqtt are the only supported types)
       mqtt_settings: # mqtt broker settings for ratgdo
-        host: localhost # dns, container name, or IP of ratgdo's mqtt host
-        port: 1883
-        client_id: tesla-youq-ratgdo1 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
-        # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
-        user: mqtt_user # optional, only define if your mqtt broker requires authentication
-        pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
-        use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-        skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
-        prefix: home/garage/Main
+        connection: # connection settings for the broker
+          inherit_teslamate_mqtt_settings: false # optional, if set, will use settings from the global section for teslamate mqtt; anything still defined in this section overrides inheritance
+          host: localhost # dns, container name, or IP of ratgdo's mqtt host
+          port: 1883
+          client_id: tesla-youq-ratgdo1 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+          # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !! client_id DOES NOT inherit global teslamate mqtt settings
+          user: mqtt_user # optional, only define if your mqtt broker requires authentication
+          pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
+          use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+          skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+        prefix: home/garage/Main # required
     cars: # list of cars that use this garage door
       - teslamate_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
-  
+
   - # 3rd car garage example
     teslamate_geofence: # uses geofences defined in teslamate; this method is less reliable and not recommended; see Notes section in the README for details
       close_trigger: # define which geofence changes trigger a close action (e.g. moving from `home` geofence to `not_home`)
@@ -55,18 +58,14 @@ garage_doors:
     opener:
       type: ratgdo # currently ratgdo (mqtt version) is the only supported type
       mqtt_settings: # mqtt broker settings for ratgdo
-        host: localhost # dns, container name, or IP of ratgdo's mqtt host
-        port: 1883
-        client_id: tesla-youq-ratgdo2 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
-        # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
-        user: mqtt_user # optional, only define if your mqtt broker requires authentication
-        pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
-        use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-        skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+        connection:
+          <<: *mqtt_connection_settings # optional, reference the yaml anchor from the global settings to use the same values here, and override the client_id below
+          client_id: tesla-youq-ratgdo2 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+          # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
         prefix: home/garage/3rdCar
     cars:
       - teslamate_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
-  
+
   - # 4th car detached garage example
     polygon_geofence: # custom defined polygonal geofence
       kml_file: ../../resources/polygon_map.kml # optional, path to kml file to load polygon geofences; define this OR the `open` and `close` definitions below
@@ -101,16 +100,27 @@ garage_doors:
         - lat: 46.192958467582514
           lng: -123.7998033090239
     opener:
-      type: ratgdo # currently ratgdo (mqtt version) is the only supported type
+      type: mqtt # type of garage door opener to use (currently ratgdo and mqtt are the only supported types)
       mqtt_settings: # mqtt broker settings for ratgdo
-        host: localhost # dns, container name, or IP of ratgdo's mqtt host
-        port: 1883
-        client_id: tesla-youq-ratgdo3 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
-        # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
-        user: mqtt_user # optional, only define if your mqtt broker requires authentication
-        pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
-        use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-        skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
-        prefix: home/garage/4thCar
+        connection:
+          <<: *mqtt_connection_settings # optional, reference the yaml anchor from the global settings to use the same values here, and override the client_id below
+          client_id: tesla-youq-mqtt-opener # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
+          # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
+        topics: # list of topics to subscribe to for status updates
+          prefix: home/garage/4thCar # optional, all topics will be prefixed with this (including command topics in the section below), e.g. the full topic for door_status would be `home/garage/4thCar/status/door`
+          door_status: status/door # optional, if smart garage door supports status updates, then app will watch status to confirm door was operated successfully
+          obstruction: status/obstruction # optional, if smart garage door supports obstruction detection, it will be monitored here as possible errors when door operations fail
+          availability: status/availability # optional, if smart garage door supports availability (e.g. opener is online or offline), it will be monitered here as possible erors when door operations fail
+        commands: # commands to operate the smart garage door opener
+          - name: open # name of the command, must be either `open` or `close` (only supported operations at this time)
+            payload: open # payload to send to the mqtt topic to execute the command (this may be different than the name depending on the smart garage door implementation, but will usually be the same)
+            topic_suffix: command/door # topic to publish the command to
+            required_start_state: closed # optional, if monitoring the door state, then validate that this is the current state before executing the requested action
+            required_stop_state: open # optional, if monitoring the door state, then validate that this is the end state of the requested action to verify the door was operated successfully
+          - name: close
+            payload: close
+            topic_suffix: command/door
+            required_start_state: open
+            required_stop_state: closed
     cars:
       - teslamate_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker
