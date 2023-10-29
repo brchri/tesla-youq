@@ -33,11 +33,10 @@ garage_doors:
       type: ratgdo # type of garage door opener to use (currently ratgdo and mqtt are the only supported types)
       mqtt_settings: # mqtt broker settings for ratgdo
         connection: # connection settings for the broker
-          inherit_teslamate_mqtt_settings: false # optional, if set, will use settings from the global section for teslamate mqtt; anything still defined in this section overrides inheritance
           host: localhost # dns, container name, or IP of ratgdo's mqtt host
           port: 1883
           client_id: tesla-youq-ratgdo1 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
-          # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !! client_id DOES NOT inherit global teslamate mqtt settings
+          # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
           user: mqtt_user # optional, only define if your mqtt broker requires authentication
           pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
           use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)

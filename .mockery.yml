@@ -4,6 +4,7 @@ filename: "{{.MockName}}.go"
 outpkg: mocks
 dir: internal/mocks
 packages:
-  github.com/brchri/tesla-youq/internal/geo:
+  github.com/eclipse/paho.mqtt.golang:
     interfaces:
-      MyqSessionInterface:
+      Client:
+      Token:

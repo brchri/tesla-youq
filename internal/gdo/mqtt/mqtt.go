@@ -15,7 +15,23 @@ import (
 )
 
 type (
-	MqttGdo struct {
+	// MqttGdo is the interface definition for an MqttGdo used by this library
+	// The interface is primarily used for mocking tests
+	MqttGdo interface {
+		// InitializeMqttClient initializes the client by setting the connection options, connecting
+		// to the mqtt broker, and subscribing to topics
+		InitializeMqttClient()
+		// onMqttConnect is the function handler that executes whenever the client connects (or reconnects)
+		// to the mqtt broker; it primarly handles topic subscriptions
+		onMqttConnect(mqtt.Client)
+		// processMqttMessage receives the published messages on subscribed topics and updates the object properties accordingly
+		processMqttMessage(mqtt.Client, mqtt.Message)
+		// SetGarageDoor operates the garage door by publishing to the configured mqtt topic with the configured payload
+		SetGarageDoor(string) error
+	}
+
+	// mqttGdo is the struct that implements the MqttGdo interface
+	mqttGdo struct {
 		MqttSettings struct {
 			Connection struct {
 				Host          string `yaml:"host"`
@@ -34,23 +50,26 @@ type (
 			} `yaml:"topics"`
 			Commands []Command `yaml:"commands"`
 		} `yaml:"mqtt_settings"`
-		ModuleName   string `yaml:"module_name"`
-		MqttClient   mqtt.Client
-		State        string
-		Availability string
-		Obstruction  string
+		ModuleName   string      `yaml:"module_name"` // name used by this module can be overridden by consuming modules, such as ratgdo, which is a wrapper for this package
+		MqttClient   mqtt.Client // client that manages the connections and subscriptions to the mqtt broker
+		State        string      // state of the garage door
+		Availability string      // if the garage door controller publishes an availability status (e.g. online), it will be stored here
+		Obstruction  string      // if the garage door controller publishes obstruction information, it will be stored here
 	}
 
 	Command struct {
-		Name               string `yaml:"name"`    // e.g. `open` or `close`
-		Payload            string `yaml:"payload"` // this could be the same or different than Name depending on the mqtt implementation
-		TopicSuffix        string `yaml:"topic_suffix"`
-		RequiredStartState string `yaml:"required_start_state"`
-		RequiredStopState  string `yaml:"required_stop_state"`
+		Name               string `yaml:"name"`                 // e.g. `open` or `close`
+		Payload            string `yaml:"payload"`              // this could be the same or different than Name depending on the mqtt implementation
+		TopicSuffix        string `yaml:"topic_suffix"`         // location where the command will be published; prefixed by MqttSettings.Topics.Prefix
+		RequiredStartState string `yaml:"required_start_state"` // if set, garage door will not operate if current state does not equal this
+		RequiredStopState  string `yaml:"required_stop_state"`  // if set, garage door will monitor the door state compared to this value to determine success
+		Timeout            int    `yaml:"timeout"`              // time to wait for garage door to operate if monitored
 	}
 )
 
 const defaultModuleName = "Generic MQTT Opener"
+
+var mqttNewClientFunc = mqtt.NewClient // abstract NewClient function call to allow mocking
 
 func init() {
 	logger.SetFormatter(&util.CustomFormatter{})
@@ -60,8 +79,16 @@ func init() {
 	}
 }
 
-func Initialize(config map[string]interface{}) (*MqttGdo, error) {
-	var mqttGdo *MqttGdo
+// wrapper function to parse the config, initialize the connection to the mqtt broker, and return the MqttGdo object
+func Initialize(config map[string]interface{}) (MqttGdo, error) {
+	mqttGdo := NewMqttGdo(config)
+	mqttGdo.InitializeMqttClient()
+	return mqttGdo, nil
+}
+
+// parses the config and returns an MqttGdo object
+func NewMqttGdo(config map[string]interface{}) MqttGdo {
+	var mqttGdo mqttGdo
 	// marshall map[string]interface into yaml, then unmarshal to object based on yaml def in struct
 	yamlData, err := yaml.Marshal(config)
 	if err != nil {
@@ -84,14 +111,19 @@ func Initialize(config map[string]interface{}) (*MqttGdo, error) {
 		logger.Warnf("mqtt client id for door opener is the same as the global, appending random uuid to the name: %s", localMqtt.ClientID)
 	}
 
+	// set command timeouts if not defined
+	for k, v := range mqttGdo.MqttSettings.Commands {
+		if v.Timeout == 0 {
+			mqttGdo.MqttSettings.Commands[k].Timeout = 30
+		}
+	}
+
 	mqttGdo.MqttSettings.Topics.Prefix = strings.TrimRight(mqttGdo.MqttSettings.Topics.Prefix, "/") // trim any trailing `/` on the prefix topic
-
-	mqttGdo.initializeMqttClient()
-
-	return mqttGdo, nil
+	return &mqttGdo
 }
 
-func (m *MqttGdo) initializeMqttClient() {
+// sets mqtt client options and connects to the broker
+func (m *mqttGdo) InitializeMqttClient() {
 
 	logger.Debug("Setting MqttGdo MQTT Opts:")
 	// create a new MQTT client
@@ -145,19 +177,21 @@ func (m *MqttGdo) initializeMqttClient() {
 	opts.AddBroker(broker)
 
 	// create a new MQTT client object
-	m.MqttClient = mqtt.NewClient(opts)
+	m.MqttClient = mqttNewClientFunc(opts)
 
 	// connect to the MQTT broker
 	logger.Debug("Connecting to MqttGdo MQTT broker")
 	if token := m.MqttClient.Connect(); token.Wait() && token.Error() != nil {
-		logger.Fatalf("could not connect to mqtt broker: %v", token.Error())
+		logger.Fatalf("%s could not connect to mqtt broker: %v", m.ModuleName, token.Error())
 	} else {
 		logger.Infof("%s door opener connected to MQTT broker", m.ModuleName)
 	}
 	logger.Debugf("MQTT Broker Connected: %t", m.MqttClient.IsConnected())
 }
 
-func (m *MqttGdo) onMqttConnect(client mqtt.Client) {
+// function handler for when the mqtt client (re-)connects to the broker
+// subscribes to topics if relevant
+func (m *mqttGdo) onMqttConnect(client mqtt.Client) {
 	topicSuffixes := []string{
 		m.MqttSettings.Topics.Obstruction,
 		m.MqttSettings.Topics.Availability,
@@ -195,7 +229,9 @@ func (m *MqttGdo) onMqttConnect(client mqtt.Client) {
 	logger.Debug("MqttGdo topics subscribed, listening for events...")
 }
 
-func (m *MqttGdo) processMqttMessage(client mqtt.Client, message mqtt.Message) {
+// handler to process messages published to subscribed topics
+// sets mqttGdo properties based on payloads
+func (m *mqttGdo) processMqttMessage(client mqtt.Client, message mqtt.Message) {
 	// update MqttGdo property based on topic suffix (strip shared prefix on the switch)
 	switch strings.TrimPrefix(message.Topic(), m.MqttSettings.Topics.Prefix+"/") {
 	case m.MqttSettings.Topics.DoorStatus:
@@ -209,7 +245,10 @@ func (m *MqttGdo) processMqttMessage(client mqtt.Client, message mqtt.Message) {
 	}
 }
 
-func (m *MqttGdo) SetGarageDoor(action string) (err error) {
+// operates the garage door based on the supplied action by publishing
+// the relevant payload to the configured command topic
+// if configured, will monitor door status to confirm successful operation
+func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 	var command Command
 	for _, v := range m.MqttSettings.Commands {
 		if action == v.Name {
@@ -239,13 +278,11 @@ func (m *MqttGdo) SetGarageDoor(action string) (err error) {
 	token := m.MqttClient.Publish(m.MqttSettings.Topics.Prefix+"/"+command.TopicSuffix, 0, false, command.Payload)
 	token.Wait()
 
-	time.Sleep(3 * time.Second)
-
 	// if a required stop state and status topic are defined, wait for it to be satisfied
 	if command.RequiredStopState != "" && m.MqttSettings.Topics.DoorStatus != "" {
-		// wait 30 seconds to reach desired state
+		// wait for timeout
 		start := time.Now()
-		for time.Since(start) < 30*time.Second {
+		for time.Since(start) < time.Duration(command.Timeout)*time.Second {
 			if m.State == command.RequiredStopState {
 				logger.Infof("Garage door state has been set successfully: %s", action)
 				return

@@ -26,7 +26,7 @@ func init() {
 }
 
 // this is just a wrapper for the mqtt package with some predefined settings for ratgdo
-func Initialize(config map[string]interface{}) (*mqttGdo.MqttGdo, error) {
+func Initialize(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
 	var ratgdo *Ratgdo
 	// marshall map[string]interface into yaml, then unmarshal to object based on yaml def in struct
 	yamlData, err := yaml.Marshal(config)
