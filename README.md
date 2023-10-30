@@ -1,3 +1,10 @@
+# Notice of Deprecation
+MyQ has, unfortunately, amped up their efforts to restrict 3rd party integration access to their APIs. Because of this, Tesla-YouQ, along with other 3rd party integrations for MyQ such as Home Assistant and Homekit, will no longer function. As such, this app will no longer be developed.
+
+However, work is currently underway to fork this repo to allow automatic control of other smart garage door openers (such as [ratgdo](https://paulwieland.github.io/ratgdo/), [Meross](https://www.meross.com/en-gc/smart-garage-door-opener/garage-door-opener-remote-control/29), or generic MQTT controlled openers) based on geofence event changes in a Tesla. If MyQ relents and allows 3rd party access to their APIs again, support for it will be re-introduced to the forked repo at that time.
+
+More information will be provided in the coming weeks.
+
 # Tesla-YouQ
 A lightweight app that will operate your MyQ connected garage doors based on the location of your Tesla vehicles, automatically closing when you leave, and opening when you return. Supports multiple vehicles and MyQ devices.
 
