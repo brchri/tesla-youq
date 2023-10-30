@@ -37,7 +37,6 @@ type (
 		CircularGeofence  *CircularGeofence      `yaml:"circular_geofence"`
 		TeslamateGeofence *TeslamateGeofence     `yaml:"teslamate_geofence"`
 		PolygonGeofence   *PolygonGeofence       `yaml:"polygon_geofence"`
-		MyQSerial         string                 `yaml:"myq_serial"`
 		Cars              []*Car                 `yaml:"cars"`   // cars housed within this garage
 		OpenerConfig      map[string]interface{} `yaml:"opener"` // holds gdo config that is parsed on gdo.Initialize
 		OpLock            bool                   // controls if garagedoor has been operated recently to prevent flapping
@@ -52,7 +51,15 @@ type (
 	}
 )
 
-var GarageDoors []*GarageDoor
+const (
+	ActionOpen  = "open"
+	ActionClose = "close"
+)
+
+var (
+	GarageDoors       []*GarageDoor
+	InitializeGdoFunc = gdo.Initialize // abstract gdo.Initialize function call to allow mocking
+)
 
 func init() {
 	logger.SetFormatter(&util.CustomFormatter{})
@@ -180,9 +187,9 @@ func ParseGarageDoorConfig() {
 			logger.Debugf("Garage door geofence type identified: %s", geoType)
 		}
 
-		g.Opener, err = gdo.Initialize(g.OpenerConfig)
+		g.Opener, err = InitializeGdoFunc(g.OpenerConfig)
 		if err != nil {
-			logger.Fatal("Couldn't initialize garage door opener module")
+			logger.Fatalf("Couldn't initialize garage door opener module, received error %s", err)
 		}
 
 		// initialize location update channel

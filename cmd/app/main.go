@@ -25,10 +25,11 @@ import (
 
 var (
 	configFile   string
-	cars         []*geo.Car                           // list of all cars from all garage doors
-	version      string                    = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
-	messageChan  chan mqtt.Message                    // channel to receive mqtt messages
-	mqttSettings *util.MqttConnectSettings            // point to util.Config.Global.MqttSettings.Connection for shorter reference
+	cars         []*geo.Car            // list of all cars from all garage doors
+	version      string     = "v0.0.1" // pass -ldflags="-X main.version=<version>" at build time to set linker flag and bake in binary version
+	commitHash   string
+	messageChan  chan mqtt.Message         // channel to receive mqtt messages
+	mqttSettings *util.MqttConnectSettings // point to util.Config.Global.MqttSettings.Connection for shorter reference
 )
 
 func init() {
@@ -67,7 +68,7 @@ func parseArgs() {
 	flag.Parse()
 
 	if getVersion {
-		versionInfo := filepath.Base(os.Args[0]) + " " + version + " " + runtime.GOOS + "/" + runtime.GOARCH
+		versionInfo := fmt.Sprintf("%s %s %s/%s; commit hash %s", filepath.Base(os.Args[0]), version, runtime.GOOS, runtime.GOARCH, commitHash)
 		fmt.Println(versionInfo)
 		os.Exit(0)
 	}

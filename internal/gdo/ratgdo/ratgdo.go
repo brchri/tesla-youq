@@ -27,6 +27,15 @@ func init() {
 
 // this is just a wrapper for the mqtt package with some predefined settings for ratgdo
 func Initialize(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
+	m, err := NewRatgdo(config)
+	if err != nil {
+		return nil, err
+	}
+	m.InitializeMqttClient()
+	return m, nil
+}
+
+func NewRatgdo(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
 	var ratgdo *Ratgdo
 	// marshall map[string]interface into yaml, then unmarshal to object based on yaml def in struct
 	yamlData, err := yaml.Marshal(config)
@@ -64,5 +73,5 @@ func Initialize(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
 	}
 	config["module_name"] = "ratgdo"
 
-	return mqttGdo.Initialize(config)
+	return mqttGdo.NewMqttGdo(config)
 }

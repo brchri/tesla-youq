@@ -43,7 +43,7 @@ type (
 				SkipTlsVerify bool   `yaml:"skip_tls_verify"`
 			} `yaml:"connection"`
 			Topics struct {
-				Prefix       string `yaml:"prefix"`
+				Prefix       string `yaml:"prefix"` // prefixed to all subscription and command topics; can be blank if all other topics are fully defined
 				DoorStatus   string `yaml:"door_status"`
 				Obstruction  string `yaml:"obstruction"`
 				Availability string `yaml:"availability"`
@@ -67,7 +67,10 @@ type (
 	}
 )
 
-const defaultModuleName = "Generic MQTT Opener"
+const (
+	defaultModuleName = "Generic MQTT Opener"
+	defaultMattPort   = 1883
+)
 
 var mqttNewClientFunc = mqtt.NewClient // abstract NewClient function call to allow mocking
 
@@ -81,13 +84,16 @@ func init() {
 
 // wrapper function to parse the config, initialize the connection to the mqtt broker, and return the MqttGdo object
 func Initialize(config map[string]interface{}) (MqttGdo, error) {
-	mqttGdo := NewMqttGdo(config)
+	mqttGdo, err := NewMqttGdo(config)
+	if err != nil {
+		return nil, err
+	}
 	mqttGdo.InitializeMqttClient()
 	return mqttGdo, nil
 }
 
 // parses the config and returns an MqttGdo object
-func NewMqttGdo(config map[string]interface{}) MqttGdo {
+func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
 	var mqttGdo mqttGdo
 	// marshall map[string]interface into yaml, then unmarshal to object based on yaml def in struct
 	yamlData, err := yaml.Marshal(config)
@@ -119,7 +125,48 @@ func NewMqttGdo(config map[string]interface{}) MqttGdo {
 	}
 
 	mqttGdo.MqttSettings.Topics.Prefix = strings.TrimRight(mqttGdo.MqttSettings.Topics.Prefix, "/") // trim any trailing `/` on the prefix topic
-	return &mqttGdo
+	return &mqttGdo, mqttGdo.ValidateMinimumMqttSettings()
+}
+
+// will validate that the minimum mqtt settings are defined,
+// will return nil if all settings validated successfully or
+// an error if not
+// also populates missing required settings with assumed defaults,
+// such as port=1883
+//
+// validated settings are:
+// host, commands[*].{Name,Payload,TopicSuffix}
+func (m *mqttGdo) ValidateMinimumMqttSettings() error {
+	var errors []string
+	if m.MqttSettings.Connection.Host == "" {
+		errors = append(errors, "missing mqtt host setting")
+	}
+	if len(m.MqttSettings.Commands) == 0 {
+		errors = append(errors, "at least 1 command required to operate garage")
+	}
+	for i, c := range m.MqttSettings.Commands {
+		commandErrorFormat := "missing %s for command %d"
+		if c.Name == "" {
+			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command name", i))
+		}
+		if c.Payload == "" {
+			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command payload", i))
+		}
+		if c.TopicSuffix == "" {
+			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command topic suffix", i))
+		}
+	}
+
+	// set defaults if omitted from config
+	if m.MqttSettings.Connection.Port == 0 {
+		logger.Debugf("Port is undefined for %s, using default port %d", m.ModuleName, defaultMattPort)
+		m.MqttSettings.Connection.Port = defaultMattPort
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "; "))
+	}
+	return nil
 }
 
 // sets mqtt client options and connects to the broker

@@ -1,172 +1,137 @@
 package geo
 
-// import (
-// 	"errors"
-// 	"path/filepath"
-// 	"testing"
-// 	"time"
+import (
+	"path/filepath"
+	"testing"
+	"time"
 
-// 	"github.com/brchri/myq"
-// 	"github.com/brchri/tesla-youq/internal/mocks"
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/mock"
+	"github.com/brchri/tesla-youq/internal/gdo"
+	"github.com/brchri/tesla-youq/internal/mocks"
+	"github.com/stretchr/testify/assert"
 
-// 	util "github.com/brchri/tesla-youq/internal/util"
-// )
+	"github.com/brchri/tesla-youq/internal/util"
+)
 
-// var (
-// 	distanceCar        *util.Car
-// 	distanceGarageDoor *util.GarageDoor
+var (
+	distanceCar        *Car
+	distanceGarageDoor *GarageDoor
 
-// 	geofenceGarageDoor *util.GarageDoor
-// 	geofenceCar        *util.Car
+	geofenceGarageDoor *GarageDoor
+	geofenceCar        *Car
 
-// 	polygonGarageDoor *util.GarageDoor
-// 	polygonCar        *util.Car
-// )
+	polygonGarageDoor *GarageDoor
+	polygonCar        *Car
+)
 
-// func init() {
-// 	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
-// 	util.Config.Global.CacheTokenFile = "" // dont assume cached token in testing
+func init() {
+	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
+	InitializeGdoFunc = func(config map[string]interface{}) (gdo.GDO, error) { return &mocks.GDO{}, nil }
+	ParseGarageDoorConfig()
 
-// 	// used for testing events based on distance
-// 	distanceGarageDoor = util.Config.GarageDoors[0]
-// 	distanceCar = distanceGarageDoor.Cars[0]
-// 	distanceCar.GarageDoor = distanceGarageDoor
-// 	distanceCar.GarageDoor.GeofenceType = util.CircularGeofenceType
+	// used for testing events based on distance
+	distanceGarageDoor = GarageDoors[0]
+	distanceCar = distanceGarageDoor.Cars[0]
+	distanceCar.GarageDoor = distanceGarageDoor
 
-// 	// used for testing events based on teslamate geofence changes
-// 	geofenceGarageDoor = util.Config.GarageDoors[1]
-// 	geofenceCar = geofenceGarageDoor.Cars[0]
-// 	geofenceCar.GarageDoor = geofenceGarageDoor
-// 	geofenceCar.GarageDoor.GeofenceType = util.TeslamateGeofenceType
+	// used for testing events based on teslamate geofence changes
+	geofenceGarageDoor = GarageDoors[1]
+	geofenceCar = geofenceGarageDoor.Cars[0]
+	geofenceCar.GarageDoor = geofenceGarageDoor
 
-// 	// used for testing events based on teslamate geofence changes
-// 	polygonGarageDoor = util.Config.GarageDoors[2]
-// 	polygonCar = polygonGarageDoor.Cars[0]
-// 	polygonCar.GarageDoor = polygonGarageDoor
-// 	polygonCar.GarageDoor.GeofenceType = util.PolygonGeofenceType
+	// used for testing events based on teslamate geofence changes
+	polygonGarageDoor = GarageDoors[2]
+	polygonCar = polygonGarageDoor.Cars[0]
+	polygonCar.GarageDoor = polygonGarageDoor
 
-// 	util.Config.Global.OpCooldown = 0
-// }
+	util.Config.Global.OpCooldown = 0
+}
 
-// func Test_getDistanceChangeAction(t *testing.T) {
-// 	distanceCar.CurDistance = 0
-// 	distanceCar.CurrentLocation.Lat = distanceCar.GarageDoor.CircularGeofence.Center.Lat + 10
-// 	distanceCar.CurrentLocation.Lng = distanceCar.GarageDoor.CircularGeofence.Center.Lng
+func Test_getEventChangeAction_Circular(t *testing.T) {
+	distanceCar.CurDistance = 0
+	distanceCar.CurrentLocation.Lat = distanceCar.GarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceCar.GarageDoor.CircularGeofence.Center.Lng
 
-// 	assert.Equal(t, myq.ActionClose, getDistanceChangeAction(util.Config, distanceCar))
-// 	assert.Greater(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.CloseDistance)
+	assert.Equal(t, ActionClose, distanceCar.GarageDoor.Geofence.getEventChangeAction(distanceCar))
+	assert.Greater(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.CloseDistance)
 
-// 	distanceCar.CurrentLocation.Lat = distanceCar.GarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lat = distanceCar.GarageDoor.CircularGeofence.Center.Lat
 
-// 	assert.Equal(t, myq.ActionOpen, getDistanceChangeAction(util.Config, distanceCar))
-// 	assert.Less(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.OpenDistance)
-// }
+	assert.Equal(t, ActionOpen, distanceCar.GarageDoor.Geofence.getEventChangeAction(distanceCar))
+	assert.Less(t, distanceCar.CurDistance, distanceCar.GarageDoor.CircularGeofence.OpenDistance)
+}
 
-// func Test_getGeoChangeEventAction(t *testing.T) {
-// 	geofenceCar.PrevGeofence = "home"
-// 	geofenceCar.CurGeofence = "not_home"
+func Test_getEventChangeAction_Teslamate(t *testing.T) {
+	geofenceCar.PrevGeofence = "home"
+	geofenceCar.CurGeofence = "not_home"
 
-// 	assert.Equal(t, myq.ActionClose, getGeoChangeEventAction(util.Config, geofenceCar))
+	assert.Equal(t, ActionClose, geofenceCar.GarageDoor.Geofence.getEventChangeAction(geofenceCar))
 
-// 	geofenceCar.PrevGeofence = "not_home"
-// 	geofenceCar.CurGeofence = "home"
+	geofenceCar.PrevGeofence = "not_home"
+	geofenceCar.CurGeofence = "home"
 
-// 	assert.Equal(t, myq.ActionOpen, getGeoChangeEventAction(util.Config, geofenceCar))
-// }
+	assert.Equal(t, ActionOpen, geofenceCar.GarageDoor.Geofence.getEventChangeAction(geofenceCar))
+}
 
-// func Test_isInsidePolygonGeo(t *testing.T) {
-// 	p := util.Point{
-// 		Lat: 46.19292902096646,
-// 		Lng: -123.79984989897177,
-// 	}
+func Test_isInsidePolygonGeo(t *testing.T) {
+	p := Point{
+		Lat: 46.19292902096646,
+		Lng: -123.79984989897177,
+	}
 
-// 	assert.Equal(t, false, isInsidePolygonGeo(p, polygonCar.GarageDoor.PolygonGeofence.Close))
+	assert.Equal(t, false, isInsidePolygonGeo(p, polygonCar.GarageDoor.PolygonGeofence.Close))
 
-// 	p = util.Point{
-// 		Lat: 46.19243683948096,
-// 		Lng: -123.80103692981524,
-// 	}
+	p = Point{
+		Lat: 46.19243683948096,
+		Lng: -123.80103692981524,
+	}
 
-// 	assert.Equal(t, true, isInsidePolygonGeo(p, polygonCar.GarageDoor.PolygonGeofence.Open))
-// }
+	assert.Equal(t, true, isInsidePolygonGeo(p, polygonCar.GarageDoor.PolygonGeofence.Open))
+}
 
-// func Test_getPolygonGeoChangeEventAction(t *testing.T) {
-// 	polygonCar.InsidePolyCloseGeo = true
-// 	polygonCar.InsidePolyOpenGeo = true
-// 	polygonCar.CurrentLocation.Lat = 46.19292902096646
-// 	polygonCar.CurrentLocation.Lng = -123.79984989897177
+func Test_getEventAction_Polygon(t *testing.T) {
+	polygonCar.InsidePolyCloseGeo = true
+	polygonCar.InsidePolyOpenGeo = true
+	polygonCar.CurrentLocation.Lat = 46.19292902096646
+	polygonCar.CurrentLocation.Lng = -123.79984989897177
 
-// 	assert.Equal(t, myq.ActionClose, getPolygonGeoChangeEventAction(util.Config, polygonCar))
-// 	assert.Equal(t, false, polygonCar.InsidePolyCloseGeo)
-// 	assert.Equal(t, true, polygonCar.InsidePolyOpenGeo)
+	assert.Equal(t, ActionClose, polygonCar.GarageDoor.Geofence.getEventChangeAction(polygonCar))
+	assert.Equal(t, false, polygonCar.InsidePolyCloseGeo)
+	assert.Equal(t, true, polygonCar.InsidePolyOpenGeo)
 
-// 	polygonCar.InsidePolyOpenGeo = false
-// 	polygonCar.CurrentLocation.Lat = 46.19243683948096
-// 	polygonCar.CurrentLocation.Lng = -123.80103692981524
+	polygonCar.InsidePolyOpenGeo = false
+	polygonCar.CurrentLocation.Lat = 46.19243683948096
+	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
-// 	assert.Equal(t, myq.ActionOpen, getPolygonGeoChangeEventAction(util.Config, polygonCar))
-// }
+	assert.Equal(t, ActionOpen, polygonCar.GarageDoor.Geofence.getEventChangeAction(polygonCar))
+}
 
-// func Test_CheckCircularGeofence_Leaving_NotLoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+func Test_CheckCircularGeofence_Leaving(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	distanceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	// TEST 1 - Leaving home, garage close
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().New().Once()
-// 	myqSession.EXPECT().Login().Return(nil).Once()
-// 	myqSession.EXPECT().SetUsername(mock.AnythingOfType("string")).Once()
-// 	myqSession.EXPECT().SetPassword(mock.AnythingOfType("string")).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
+	mockGdo.EXPECT().SetGarageDoor(ActionClose).Return(nil)
 
-// 	distanceCar.CurDistance = 0
-// 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
-// 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurDistance = 0
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-// 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
-// }
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
+}
 
-// func Test_CheckCircularGeofence_Leaving_LoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+func Test_CheckCircularGeofence_Arriving(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	distanceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	// TEST 1 - Leaving home, garage close
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
+	mockGdo.EXPECT().SetGarageDoor(ActionOpen).Return(nil)
 
-// 	distanceCar.CurDistance = 0
-// 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
-// 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurDistance = 100
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-// 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
-// }
-
-// func Test_CheckCircularGeofence_Arriving_LoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
-
-// 	// TEST 1 - Arriving home, garage open
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-
-// 	distanceCar.CurDistance = 100
-// 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
-// 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
-
-// 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
-// }
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
+}
 
 // // retry logic has been temporarily disabled, so this test is not needed until it's re-enabled
 // // this is due to the myq api changes that need stabilizing so we don't retry and hit api rate limiting
@@ -178,8 +143,8 @@ package geo
 
 // // 	// TEST 1 - Arriving home, garage open
 // // 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Times(3)
-// // 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(errors.New("some error")).Twice()
-// // 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
+// // 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), ActionOpen).Return(errors.New("some error")).Twice()
+// // 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), ActionOpen).Return(nil).Once()
 // // 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
 
 // // 	distanceCar.CurDistance = 100
@@ -189,133 +154,107 @@ package geo
 // // 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 // // }
 
-// func Test_CheckCircularGeofence_LeaveThenArrive_NotLoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+func Test_CheckCircularGeofence_LeaveThenArrive(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	distanceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	// TEST 1 - Leaving home, garage close
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
-// 	myqSession.EXPECT().New().Once()
-// 	myqSession.EXPECT().SetUsername(mock.AnythingOfType("string")).Once()
-// 	myqSession.EXPECT().SetPassword(mock.AnythingOfType("string")).Once()
-// 	myqSession.EXPECT().Login().Return(nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionClose).Return(nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+	// TEST 1 - Leaving home, garage close
+	mockGdo.EXPECT().SetGarageDoor(ActionClose).Return(nil)
 
-// 	distanceCar.CurDistance = 0
-// 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
-// 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
+	distanceCar.CurDistance = 0
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-// 	CheckGeofence(util.Config, distanceCar)
-// 	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
-// 	for {
-// 		if !distanceCar.GarageDoor.OpLock {
-// 			break
-// 		}
-// 	}
+	CheckGeofence(distanceCar)
+	// wait for oplock to release to ensure goroutine within CheckGeofence function has completed
+	for {
+		if !distanceCar.GarageDoor.OpLock {
+			break
+		}
+	}
 
-// 	myqSession.AssertExpectations(t) // midpoint check
+	mockGdo.AssertExpectations(t) // midpoint check
 
-// 	// TEST 2 - Arriving home, garage open
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
-// 	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
+	// TEST 2 - Arriving home, garage open
+	mockGdo.EXPECT().SetGarageDoor(ActionOpen).Return(nil)
 
-// 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
-// }
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
 
-// func Test_CheckTeslamateGeofence_Leaving_LoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
+}
 
-// 	// TEST 1 - Leaving home, garage close
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.Anything, myq.ActionClose).Return(nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
+func Test_CheckTeslamateGeofence_Leaving(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	geofenceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	geofenceCar.PrevGeofence = "home"
-// 	geofenceCar.CurGeofence = "not_home"
+	// TEST 1 - Leaving home, garage close
+	mockGdo.EXPECT().SetGarageDoor(ActionClose).Return(nil)
 
-// 	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
-// }
+	geofenceCar.PrevGeofence = "home"
+	geofenceCar.CurGeofence = "not_home"
 
-// func Test_CheckTeslamateGeofence_Arriving_LoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
+}
 
-// 	// TEST 1 - Leaving home, garage close
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.Anything, myq.ActionOpen).Return(nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+func Test_CheckTeslamateGeofence_Arriving(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	geofenceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	geofenceCar.PrevGeofence = "not_home"
-// 	geofenceCar.CurGeofence = "home"
+	// TEST 1 - Arriving home, garage open
+	mockGdo.EXPECT().SetGarageDoor(ActionOpen).Return(nil)
 
-// 	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
-// }
+	geofenceCar.PrevGeofence = "not_home"
+	geofenceCar.CurGeofence = "home"
 
-// func Test_CheckPolyGeofence_Leaving_NotLoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
+}
 
-// 	// TEST 1 - Leaving home, garage close
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return("", errors.New("unauthorized")).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().New().Once()
-// 	myqSession.EXPECT().Login().Return(nil).Once()
-// 	myqSession.EXPECT().SetUsername(mock.AnythingOfType("string")).Once()
-// 	myqSession.EXPECT().SetPassword(mock.AnythingOfType("string")).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Once()
+func Test_CheckPolyGeofence_Leaving(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	polygonCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	polygonCar.InsidePolyCloseGeo = true
-// 	polygonCar.InsidePolyOpenGeo = true
-// 	polygonCar.CurrentLocation.Lat = 46.19292902096646
-// 	polygonCar.CurrentLocation.Lng = -123.79984989897177
+	// TEST 1 - Leaving home, garage close
+	mockGdo.EXPECT().SetGarageDoor(ActionClose).Return(nil)
 
-// 	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
-// }
+	polygonCar.InsidePolyCloseGeo = true
+	polygonCar.InsidePolyOpenGeo = true
+	polygonCar.CurrentLocation.Lat = 46.19292902096646
+	polygonCar.CurrentLocation.Lng = -123.79984989897177
 
-// func Test_CheckPolyGeofence_Arriving_LoggedIn(t *testing.T) {
-// 	myqSession := &mocks.MyqSessionInterface{}
-// 	myqSession.Test(t)
-// 	defer myqSession.AssertExpectations(t)
-// 	myqExec = myqSession
+	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
+}
 
-// 	// TEST 1 - Arriving home, garage open
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateClosed, nil).Once()
-// 	myqSession.EXPECT().SetDoorState(mock.AnythingOfType("string"), myq.ActionOpen).Return(nil).Once()
-// 	myqSession.EXPECT().DeviceState(mock.AnythingOfType("string")).Return(myq.StateOpen, nil).Once()
+func Test_CheckPolyGeofence_Arriving(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	polygonCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
 
-// 	polygonCar.InsidePolyCloseGeo = false
-// 	polygonCar.InsidePolyOpenGeo = false
-// 	polygonCar.CurrentLocation.Lat = 46.19243683948096
-// 	polygonCar.CurrentLocation.Lng = -123.80103692981524
+	// TEST 1 - Arriving home, garage open
+	mockGdo.EXPECT().SetGarageDoor(ActionOpen).Return(nil)
 
-// 	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
-// }
+	polygonCar.InsidePolyCloseGeo = false
+	polygonCar.InsidePolyOpenGeo = false
+	polygonCar.CurrentLocation.Lat = 46.19243683948096
+	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
-// // runs CheckGeofence and waits for the internal goroutine to complete, signified by the release of oplock,
-// // with 100 ms timeout
-// func checkGeofenceWrapper(car *util.Car) bool {
-// 	CheckGeofence(util.Config, car)
-// 	// wait for oplock to be released with a 100 ms timeout
-// 	for i := 0; i < 10; i++ {
-// 		if !car.GarageDoor.OpLock {
-// 			return true
-// 		}
-// 		time.Sleep(10 * time.Millisecond)
-// 	}
-// 	return false
-// }
+	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
+}
+
+// runs CheckGeofence and waits for the internal goroutine to complete, signified by the release of oplock,
+// with 100 ms timeout
+func checkGeofenceWrapper(car *Car) bool {
+	CheckGeofence(car)
+	// wait for oplock to be released with a 100 ms timeout
+	for i := 0; i < 10; i++ {
+		if !car.GarageDoor.OpLock {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}

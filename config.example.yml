@@ -41,7 +41,7 @@ garage_doors:
           pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
           use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
           skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
-        prefix: home/garage/Main # required
+        topic_prefix: home/garage/Main # required
     cars: # list of cars that use this garage door
       - teslamate_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
       - teslamate_car_id: 2 # id used for the second vehicle in TeslaMate's MQTT broker
@@ -61,7 +61,7 @@ garage_doors:
           <<: *mqtt_connection_settings # optional, reference the yaml anchor from the global settings to use the same values here, and override the client_id below
           client_id: tesla-youq-ratgdo2 # optional, arbitrary client name for MQTT connection; must not be the same as any other MQTT client name, will use random uuid if omitted
           # WARNING!! client_id's MUST BE UNIQUE for any mqtt client that shares a broker !!
-        prefix: home/garage/3rdCar
+        topic_prefix: home/garage/3rdCar
     cars:
       - teslamate_car_id: 3 # id used for the third vehicle in TeslaMate's MQTT broker
 

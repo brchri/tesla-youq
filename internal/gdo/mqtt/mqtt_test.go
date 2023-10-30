@@ -49,14 +49,18 @@ var sampleYaml = map[string]interface{}{
 }
 
 func Test_NewClient(t *testing.T) {
-	mqttGdo, ok := NewMqttGdo(sampleYaml).(*mqttGdo)
-	if ok {
-		// spot check some elements from the yaml config
-		assert.Equal(t, mqttGdo.MqttSettings.Connection.Host, "localhost")
-		assert.Equal(t, mqttGdo.MqttSettings.Connection.Port, 1883)
-		assert.Equal(t, mqttGdo.MqttSettings.Topics.DoorStatus, "status/door")
-		assert.Equal(t, mqttGdo.MqttSettings.Commands[0].Name, "open")
-		assert.Equal(t, mqttGdo.MqttSettings.Commands[1].Timeout, 5)
+	mqttgdo, err := NewMqttGdo(sampleYaml)
+	assert.Equal(t, nil, err)
+	if err != nil {
+		return
+	}
+
+	if m, ok := mqttgdo.(*mqttGdo); ok {
+		assert.Equal(t, m.MqttSettings.Connection.Host, "localhost")
+		assert.Equal(t, m.MqttSettings.Connection.Port, 1883)
+		assert.Equal(t, m.MqttSettings.Topics.DoorStatus, "status/door")
+		assert.Equal(t, m.MqttSettings.Commands[0].Name, "open")
+		assert.Equal(t, m.MqttSettings.Commands[1].Timeout, 5)
 	} else {
 		t.Error("returned type is not *mqttGdo")
 	}
@@ -100,7 +104,12 @@ func Test_SetGarageDoor(t *testing.T) {
 	mockMqttClient.EXPECT().Publish("home/garage/Main/command/door", mock.Anything, false, "open").Once().Return(mockMqttToken)
 
 	// initialize test object
-	mqttGdo, ok := NewMqttGdo(sampleYaml).(*mqttGdo)
+	m, err := NewMqttGdo(sampleYaml)
+	assert.Equal(t, nil, err)
+	if err != nil {
+		return
+	}
+	mqttGdo, ok := m.(*mqttGdo) // check type so we can access structs
 	if !ok {
 		t.Error("returned type is not *mqttGdo")
 	}

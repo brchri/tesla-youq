@@ -1,6 +1,7 @@
 FROM golang:1.21-alpine3.18 AS builder
 
 ARG BUILD_VERSION
+ARG BUILD_HASH
 
 RUN test -n "${BUILD_VERSION}" || (echo "Build argument BUILD_VERSION is required but not provided" && exit 1)
 
@@ -8,7 +9,7 @@ WORKDIR /app
 COPY . ./
 
 RUN go test ./...
-RUN go build -ldflags="-X main.version=${BUILD_VERSION}" -o tesla-youq cmd/app/main.go
+RUN go build -ldflags="-X main.version=${BUILD_VERSION} -X main.commitHash=${BUILD_HASH:0:7}" -o tesla-youq cmd/app/main.go
 
 FROM alpine:3.18
 

@@ -2,8 +2,6 @@ package geo
 
 import (
 	"math"
-
-	"github.com/brchri/myq"
 )
 
 type (
@@ -52,11 +50,11 @@ func (c *CircularGeofence) getEventChangeAction(car *Car) (action string) {
 	if car.GarageDoor.CircularGeofence.CloseDistance > 0 && // is valid close distance defined
 		prevDistance <= car.GarageDoor.CircularGeofence.CloseDistance &&
 		car.CurDistance > car.GarageDoor.CircularGeofence.CloseDistance { // car was within close geofence, but now beyond it (car left geofence)
-		action = myq.ActionClose
+		action = ActionClose
 	} else if car.GarageDoor.CircularGeofence.OpenDistance > 0 && // is valid open distance defined
 		prevDistance >= car.GarageDoor.CircularGeofence.OpenDistance &&
 		car.CurDistance < car.GarageDoor.CircularGeofence.OpenDistance { // car was outside of open geofence, but is now within it (car entered geofence)
-		action = myq.ActionOpen
+		action = ActionOpen
 	}
 	return
 }

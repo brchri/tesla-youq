@@ -25,11 +25,11 @@ func (t *TeslamateGeofence) getEventChangeAction(car *Car) (action string) {
 	if car.GarageDoor.TeslamateGeofence.Close.IsTriggerDefined() &&
 		car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Close.From &&
 		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Close.To {
-		action = "close"
+		action = ActionClose
 	} else if car.GarageDoor.TeslamateGeofence.Open.IsTriggerDefined() &&
 		car.PrevGeofence == car.GarageDoor.TeslamateGeofence.Open.From &&
 		car.CurGeofence == car.GarageDoor.TeslamateGeofence.Open.To {
-		action = "open"
+		action = ActionOpen
 	}
 	return
 }
