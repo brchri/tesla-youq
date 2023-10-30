@@ -71,7 +71,6 @@ func NewRatgdo(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
 			},
 		}
 	}
-	config["module_name"] = "ratgdo"
 
 	return mqttGdo.NewMqttGdo(config)
 }

@@ -50,7 +50,7 @@ type (
 			} `yaml:"topics"`
 			Commands []Command `yaml:"commands"`
 		} `yaml:"mqtt_settings"`
-		ModuleName   string      `yaml:"module_name"` // name used by this module can be overridden by consuming modules, such as ratgdo, which is a wrapper for this package
+		OpenerType   string      `yaml:"type"` // name used by this module can be overridden by consuming modules, such as ratgdo, which is a wrapper for this package
 		MqttClient   mqtt.Client // client that manages the connections and subscriptions to the mqtt broker
 		State        string      // state of the garage door
 		Availability string      // if the garage door controller publishes an availability status (e.g. online), it will be stored here
@@ -94,7 +94,7 @@ func Initialize(config map[string]interface{}) (MqttGdo, error) {
 
 // parses the config and returns an MqttGdo object
 func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
-	var mqttGdo mqttGdo
+	var mqttGdo *mqttGdo
 	// marshall map[string]interface into yaml, then unmarshal to object based on yaml def in struct
 	yamlData, err := yaml.Marshal(config)
 	if err != nil {
@@ -105,16 +105,16 @@ func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
 		logger.Fatal("Failed to unmarhsal garage doors yaml object")
 	}
 
-	if mqttGdo.ModuleName == "" {
-		mqttGdo.ModuleName = defaultModuleName
+	if mqttGdo.OpenerType == "" {
+		mqttGdo.OpenerType = defaultModuleName
 	}
 
 	// check if garage door opener is connecting to the same mqtt broker as the global for teslamate, and if so, that they have unique clientIDs
 	localMqtt := &mqttGdo.MqttSettings.Connection
 	globalMqtt := util.Config.Global.MqttSettings.Connection
 	if localMqtt.ClientID != "" && localMqtt.ClientID == globalMqtt.ClientID && localMqtt.Host == globalMqtt.Host && localMqtt.Port == globalMqtt.Port {
-		localMqtt.ClientID = localMqtt.ClientID + "-" + uuid.NewString()
-		logger.Warnf("mqtt client id for door opener is the same as the global, appending random uuid to the name: %s", localMqtt.ClientID)
+		localMqtt.ClientID = localMqtt.ClientID + "-" + mqttGdo.OpenerType + "-" + uuid.NewString()
+		logger.Warnf("mqtt client id for door opener is the same as the global, appending opener type and random uuid to the client id: %s", localMqtt.ClientID)
 	}
 
 	// set command timeouts if not defined
@@ -125,7 +125,7 @@ func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
 	}
 
 	mqttGdo.MqttSettings.Topics.Prefix = strings.TrimRight(mqttGdo.MqttSettings.Topics.Prefix, "/") // trim any trailing `/` on the prefix topic
-	return &mqttGdo, mqttGdo.ValidateMinimumMqttSettings()
+	return mqttGdo, mqttGdo.ValidateMinimumMqttSettings()
 }
 
 // will validate that the minimum mqtt settings are defined,
@@ -159,7 +159,7 @@ func (m *mqttGdo) ValidateMinimumMqttSettings() error {
 
 	// set defaults if omitted from config
 	if m.MqttSettings.Connection.Port == 0 {
-		logger.Debugf("Port is undefined for %s, using default port %d", m.ModuleName, defaultMattPort)
+		logger.Debugf("Port is undefined for %s, using default port %d", m.OpenerType, defaultMattPort)
 		m.MqttSettings.Connection.Port = defaultMattPort
 	}
 
@@ -229,9 +229,9 @@ func (m *mqttGdo) InitializeMqttClient() {
 	// connect to the MQTT broker
 	logger.Debug("Connecting to MqttGdo MQTT broker")
 	if token := m.MqttClient.Connect(); token.Wait() && token.Error() != nil {
-		logger.Fatalf("%s could not connect to mqtt broker: %v", m.ModuleName, token.Error())
+		logger.Fatalf("%s could not connect to mqtt broker: %v", m.OpenerType, token.Error())
 	} else {
-		logger.Infof("%s door opener connected to MQTT broker", m.ModuleName)
+		logger.Infof("%s door opener connected to MQTT broker", m.OpenerType)
 	}
 	logger.Debugf("MQTT Broker Connected: %t", m.MqttClient.IsConnected())
 }
