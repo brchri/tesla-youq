@@ -15,9 +15,11 @@ import (
 )
 
 type httpRequestData struct {
-	method string
-	path   string
-	body   string
+	method   string
+	path     string
+	body     string
+	username string
+	password string
 }
 
 var sampleYaml = map[string]interface{}{
@@ -44,9 +46,9 @@ var sampleYaml = map[string]interface{}{
 				"timeout":              5,
 			}, {
 				"name":                 "close",
-				"endpoint":             "/command",
+				"endpoint":             "/close",
 				"http_method":          "post",
-				"body":                 "{ \"command\": \"close\" }",
+				"body":                 "",
 				"required_start_state": "open",
 				"required_stop_state":  "closed",
 				"timeout":              5,
@@ -83,11 +85,14 @@ func mockServerHandler(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, _ := io.ReadAll(r.Body)
 	body := string(bodyBytes)
 
-	httpRequests = append(httpRequests, httpRequestData{
+	httpRequest := httpRequestData{
 		method: r.Method,
 		path:   r.URL.Path,
 		body:   body,
-	})
+	}
+	httpRequest.username, httpRequest.password, _ = r.BasicAuth()
+
+	httpRequests = append(httpRequests, httpRequest)
 
 	if r.Method == "GET" && r.URL.Path == "/status" {
 		fmt.Fprint(w, doorStateToReturn)
@@ -138,7 +143,7 @@ func Test_getDoorStatus(t *testing.T) {
 }
 
 // check SetGarageDoor with no status checks
-func Test_SetGarageDoor_NoStatus(t *testing.T) {
+func Test_SetGarageDoor_Open_NoStatus(t *testing.T) {
 	h, err := NewHttpGdo(sampleYaml)
 	assert.Equal(t, nil, err)
 	if err != nil {
@@ -167,10 +172,12 @@ func Test_SetGarageDoor_NoStatus(t *testing.T) {
 	assert.Equal(t, `{ "command": "open" }`, httpRequests[len(httpRequests)-1].body)
 	assert.Equal(t, "POST", httpRequests[len(httpRequests)-1].method)
 	assert.Equal(t, "/command", httpRequests[len(httpRequests)-1].path)
+	assert.Equal(t, "test-user", httpRequests[len(httpRequests)-1].username)
+	assert.Equal(t, "test-pass", httpRequests[len(httpRequests)-1].password)
 }
 
 // check SetGarageDoor with status checks
-func Test_SetGarageDoor_WithStatus(t *testing.T) {
+func Test_SetGarageDoor_Open_WithStatus(t *testing.T) {
 	h, err := NewHttpGdo(sampleYaml)
 	assert.Equal(t, nil, err)
 	if err != nil {
@@ -215,4 +222,35 @@ func Test_SetGarageDoor_WithStatus(t *testing.T) {
 
 	// wait for goroutine to finish
 	wg.Wait()
+}
+
+func Test_SetGarageDoor_Close_NoStatus(t *testing.T) {
+	h, err := NewHttpGdo(sampleYaml)
+	assert.Equal(t, nil, err)
+	if err != nil {
+		return
+	}
+	httpGdo, ok := h.(*httpGdo)
+	if !ok {
+		t.Error("returned type is not *httpGdo")
+	}
+
+	// create mock http server and extract host and port info
+	mockServer := httptest.NewServer(http.HandlerFunc(mockServerHandler))
+	defer mockServer.Close()
+	re := regexp.MustCompile(`http[s]?:\/\/(.+):(.*)`)
+	matches := re.FindStringSubmatch(mockServer.URL)
+	httpGdo.Settings.Connection.Host = matches[1]
+	serverPort, _ := strconv.ParseInt(matches[2], 10, 32)
+	httpGdo.Settings.Connection.Port = int(serverPort)
+
+	// clear status endpoint, as we're testing without it here
+	httpGdo.Settings.Status.Endpoint = ""
+	httpGdo.SetGarageDoor("close")
+	// check that we received some requests
+	assert.LessOrEqual(t, 1, len(httpRequests))
+	// check that final request was expected open params
+	assert.Equal(t, "", httpRequests[len(httpRequests)-1].body)
+	assert.Equal(t, "POST", httpRequests[len(httpRequests)-1].method)
+	assert.Equal(t, "/close", httpRequests[len(httpRequests)-1].path)
 }

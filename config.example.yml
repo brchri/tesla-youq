@@ -18,7 +18,7 @@ global:
       user: mqtt_user # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_USER
       pass: mqtt_pass # optional, only define if your mqtt broker requires authentication, can also be passed as env var MQTT_PASS
       use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-      skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+      skip_tls_verify: false # optional, if use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
   cooldown: 5 # minutes to wait after operating garage before allowing another garage operation
 
 garage_doors:
@@ -40,7 +40,7 @@ garage_doors:
           user: mqtt_user # optional, only define if your mqtt broker requires authentication
           pass: mqtt_pass # optional, only define if your mqtt broker requires authentication
           use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
-          skip_tls_verify: false # optional, if mqtt_use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
+          skip_tls_verify: false # optional, if use_tls = true, this option indicates whether the client should skip certificate validation on the mqtt broker
         topic_prefix: home/garage/Main # required
     cars: # list of cars that use this garage door
       - teslamate_car_id: 1 # id used for the first vehicle in TeslaMate's MQTT broker
@@ -135,17 +135,17 @@ garage_doors:
       type: http
       settings:
         connection:
-          host: localhost
-          port: 80 
-          use_tls: false
-          skip_tls_verify: false
-          username: user
-          password: pass
+          host: localhost # http host to connect to
+          port: 80 # http port to connect to
+          use_tls: false # optional, instructs app to connect to mqtt broker using tls (defaults to false)
+          skip_tls_verify: false  # optional, if use_tls = true, this option indicates whether the client should skip certificate validation on the http client
+          username: user # optional if basic auth is required
+          password: pass # optional if basic auth is required
         status:
             endpoint: /status # optional, GET endpoint to retrieve current door status; expects simple return values like `open` or `closed`
         commands:
           # /command endpoint with a body to indicate the command type
-          - name: open
+          - name: open # name of command
             endpoint: /command
             http_method: post
             body: { "command": "open" }

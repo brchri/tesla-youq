@@ -23,6 +23,7 @@ A lightweight app that will operate your smart connected garage doors based on t
 * Current
   * [ratgdo](https://paulwieland.github.io/ratgdo/) (MQTT Configuration)
   * Generic MQTT Controlled Smart Garage Door Openers
+  * Generic HTTP Controlled Smart Garage Door Openers
 * Deprecated:
   * MyQ
     * No longer supported due to MyQ API changes blocking 3rd party integrations
@@ -94,7 +95,7 @@ garage_doors:
       mqtt_settings:
         connection:
           host: localhost
-          port: 1833
+          port: 1883
         prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
@@ -128,7 +129,7 @@ garage_doors:
       mqtt_settings:
         connection:
           host: localhost
-          port: 1833
+          port: 1883
         prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
@@ -177,7 +178,7 @@ garage_doors:
       mqtt_settings:
         connection:
           host: localhost
-          port: 1833
+          port: 1883
         prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
@@ -196,7 +197,7 @@ garage_doors:
       mqtt_settings:
         connection:
           host: localhost
-          port: 1833
+          port: 1883
         prefix: home/garage/Main
     cars:
       - teslamate_car_id: 1
