@@ -8,8 +8,9 @@ RUN test -n "${BUILD_VERSION}" || (echo "Build argument BUILD_VERSION is require
 WORKDIR /app
 COPY . ./
 
-RUN go test ./...
-RUN go build -ldflags="-X main.version=${BUILD_VERSION} -X main.commitHash=${BUILD_HASH:0:7}" -o tesla-youq cmd/app/main.go
+RUN cp examples/config.multiple.yml ./config.example.yml && \
+    go test ./... && \
+    go build -ldflags="-X main.version=${BUILD_VERSION} -X main.commitHash=${BUILD_HASH:0:7}" -o tesla-youq cmd/app/main.go
 
 FROM alpine:3.18
 

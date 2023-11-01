@@ -1,11 +1,13 @@
 package mqtt
 
 import (
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/brchri/tesla-youq/internal/mocks"
+	"github.com/brchri/tesla-youq/internal/util"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -30,25 +32,26 @@ var sampleYaml = map[string]interface{}{
 		},
 		"commands": []map[string]interface{}{
 			{
-				"name":                 "open",
-				"payload":              "open",
-				"topic_suffix":         "command/door",
-				"required_start_state": "closed",
-				"required_stop_state":  "open",
-				"timeout":              5,
+				"name":                  "open",
+				"payload":               "open",
+				"topic_suffix":          "command/door",
+				"required_start_state":  "closed",
+				"required_finish_state": "open",
+				"timeout":               5,
 			}, {
-				"name":                 "close",
-				"payload":              "close",
-				"topic_suffix":         "command/door",
-				"required_start_state": "open",
-				"required_stop_state":  "closed",
-				"timeout":              5,
+				"name":                  "close",
+				"payload":               "close",
+				"topic_suffix":          "command/door",
+				"required_start_state":  "open",
+				"required_finish_state": "closed",
+				"timeout":               5,
 			},
 		},
 	},
 }
 
 func Test_NewClient(t *testing.T) {
+	// test with sample config defined above
 	mqttgdo, err := NewMqttGdo(sampleYaml)
 	assert.Equal(t, nil, err)
 	if err != nil {
@@ -64,6 +67,27 @@ func Test_NewClient(t *testing.T) {
 	} else {
 		t.Error("returned type is not *mqttGdo")
 	}
+
+	// test with sample config extracted from example config.yml file
+	util.LoadConfig(filepath.Join("..", "..", "..", "examples", "config.teslamate.mqtt.yml"))
+	door := *util.Config.GarageDoors[0]
+	var openerConfig interface{}
+	for k, v := range door {
+		if k == "opener" {
+			openerConfig = v
+		}
+	}
+	if openerConfig == nil {
+		t.Error("unable to parse config from garage door")
+		return
+	}
+	config, ok := openerConfig.(map[string]interface{})
+	if !ok {
+		t.Error("unable to parse config from garage door")
+		return
+	}
+	_, err = NewMqttGdo(config)
+	assert.Equal(t, nil, err)
 }
 
 func Test_InitializeClient(t *testing.T) {

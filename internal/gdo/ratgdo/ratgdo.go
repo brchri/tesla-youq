@@ -58,17 +58,17 @@ func NewRatgdo(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
 		}
 		mqttSettings["commands"] = []map[string]string{
 			{
-				"name":                 "open",
-				"payload":              "open",
-				"topic_suffix":         "command/door",
-				"required_start_state": "closed",
-				"required_stop_state":  "open",
+				"name":                  "open",
+				"payload":               "open",
+				"topic_suffix":          "command/door",
+				"required_start_state":  "closed",
+				"required_finish_state": "open",
 			}, {
-				"name":                 "close",
-				"payload":              "close",
-				"topic_suffix":         "command/door",
-				"required_start_state": "open",
-				"required_stop_state":  "closed",
+				"name":                  "close",
+				"payload":               "close",
+				"topic_suffix":          "command/door",
+				"required_start_state":  "open",
+				"required_finish_state": "closed",
 			},
 		}
 	}

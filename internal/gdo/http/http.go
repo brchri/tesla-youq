@@ -43,13 +43,13 @@ type (
 	}
 
 	Command struct {
-		Name               string `yaml:"name"` // e.g. `open` or `close`
-		Endpoint           string `yaml:"endpoint"`
-		HttpMethod         string `yaml:"http_method"`
-		Body               string `yaml:"body"`
-		RequiredStartState string `yaml:"required_start_state"` // if set, garage door will not operate if current state does not equal this
-		RequiredStopState  string `yaml:"required_stop_state"`  // if set, garage door will monitor the door state compared to this value to determine success
-		Timeout            int    `yaml:"timeout"`              // time to wait for garage door to operate if monitored
+		Name                string `yaml:"name"` // e.g. `open` or `close`
+		Endpoint            string `yaml:"endpoint"`
+		HttpMethod          string `yaml:"http_method"`
+		Body                string `yaml:"body"`
+		RequiredStartState  string `yaml:"required_start_state"`  // if set, garage door will not operate if current state does not equal this
+		RequiredFinishState string `yaml:"required_finish_state"` // if set, garage door will monitor the door state compared to this value to determine success
+		Timeout             int    `yaml:"timeout"`               // time to wait for garage door to operate if monitored
 	}
 )
 
@@ -98,7 +98,42 @@ func NewHttpGdo(config map[string]interface{}) (HttpGdo, error) {
 		}
 	}
 
-	return httpGdo, nil
+	return httpGdo, httpGdo.ValidateMinimumHttpSettings()
+}
+
+// will validate that the minimum mqtt settings are defined,
+// will return nil if all settings validated successfully or
+// an error if not
+// also populates missing required settings with assumed defaults,
+// such as port=1883
+//
+// validated settings are:
+// host, commands[*].{Name,Payload,TopicSuffix}
+func (h *httpGdo) ValidateMinimumHttpSettings() error {
+	var errors []string
+	if h.Settings.Connection.Host == "" {
+		errors = append(errors, "missing http host setting")
+	}
+	if len(h.Settings.Commands) == 0 {
+		errors = append(errors, "at least 1 command required to operate garage")
+	}
+	for i, c := range h.Settings.Commands {
+		commandErrorFormat := "missing %s for command %d"
+		if c.Name == "" {
+			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command name", i))
+		}
+		if c.Endpoint == "" {
+			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command endpoint", i))
+		}
+		if c.HttpMethod == "" {
+			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command http method", i))
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "; "))
+	}
+	return nil
 }
 
 func (h *httpGdo) SetGarageDoor(action string) error {
@@ -162,8 +197,8 @@ func (h *httpGdo) SetGarageDoor(action string) error {
 		return fmt.Errorf("received unexpected http status code: %s", resp.Status)
 	}
 
-	// if no required_stop_state or status.endpoint was defined, then just return that we successfully posted to the endpoint
-	if command.RequiredStopState == "" || h.Settings.Status.Endpoint == "" {
+	// if no required_finish_state or status.endpoint was defined, then just return that we successfully posted to the endpoint
+	if command.RequiredFinishState == "" || h.Settings.Status.Endpoint == "" {
 		logger.Infof("Garage door command `%s` has been sent to the http endpoint", action)
 		return nil
 	}
@@ -175,8 +210,8 @@ func (h *httpGdo) SetGarageDoor(action string) error {
 		if err != nil {
 			logger.Debugf("Unable to get door state, received err: %v", err)
 			logger.Debugf("Will keep trying until timeout expires")
-		} else if h.State == command.RequiredStopState {
-			logger.Infof("Garage door state has been set successfully: %s", action)
+		} else if h.State == command.RequiredFinishState {
+			logger.Infof("Garage door state has been set successfully: %s", command.RequiredFinishState)
 			return nil
 		} else {
 			logger.Debugf("Current opener state: %s", h.State)
@@ -184,8 +219,8 @@ func (h *httpGdo) SetGarageDoor(action string) error {
 		time.Sleep(1 * time.Second)
 	}
 
-	// if we've hit this point, then we've timed out waiting for the garage to reach the requiredStopState
-	return fmt.Errorf("command sent to http endpoint, but timed out waiting for door to reach required_stop_state %s; current door state: %s", command.RequiredStopState, h.State)
+	// if we've hit this point, then we've timed out waiting for the garage to reach the requiredFinishState
+	return fmt.Errorf("command sent to http endpoint, but timed out waiting for door to reach required_finish_state %s; current door state: %s", command.RequiredFinishState, h.State)
 }
 
 func (h *httpGdo) getDoorStatus() (string, error) {

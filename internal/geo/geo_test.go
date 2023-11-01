@@ -24,7 +24,7 @@ var (
 )
 
 func init() {
-	util.LoadConfig(filepath.Join("..", "..", "config.example.yml"))
+	util.LoadConfig(filepath.Join("..", "..", "examples", "config.multiple.yml"))
 	InitializeGdoFunc = func(config map[string]interface{}) (gdo.GDO, error) { return &mocks.GDO{}, nil }
 	ParseGarageDoorConfig()
 

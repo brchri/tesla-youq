@@ -35,7 +35,7 @@ This app uses the MQTT broker bundled with [TeslaMate](https://github.com/adrian
 
 ## How to use
 ### Docker
-This app is provided as a docker image. You will need to download the [config.example.yml](config.example.yml) file (or the simplified [config.simple.example.yml](config.simple.example.yml)), edit it appropriately (***make sure to preserve the leading spaces, they are important***), and then mount it to the container at runtime. For example:
+This app is provided as a docker image. You will need to create a `config.yml` file (please refer to the [examples directory](/examples) or the simplified [config.simple.example.yml](config.simple.example.yml)), edit it appropriately (***make sure to preserve the leading spaces, they are important***), and then mount it to the container at runtime. For example:
 
 ```bash
 # see docker compose example below for parameter explanations

@@ -5,12 +5,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/brchri/tesla-youq/internal/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,21 +39,21 @@ var sampleYaml = map[string]interface{}{
 		},
 		"commands": []map[string]interface{}{
 			{
-				"name":                 "open",
-				"endpoint":             "/command",
-				"http_method":          "post",
-				"body":                 "{ \"command\": \"open\" }",
-				"required_start_state": "closed",
-				"required_stop_state":  "open",
-				"timeout":              5,
+				"name":                  "open",
+				"endpoint":              "/command",
+				"http_method":           "post",
+				"body":                  "{ \"command\": \"open\" }",
+				"required_start_state":  "closed",
+				"required_finish_state": "open",
+				"timeout":               5,
 			}, {
-				"name":                 "close",
-				"endpoint":             "/close",
-				"http_method":          "post",
-				"body":                 "",
-				"required_start_state": "open",
-				"required_stop_state":  "closed",
-				"timeout":              5,
+				"name":                  "close",
+				"endpoint":              "/close",
+				"http_method":           "post",
+				"body":                  "",
+				"required_start_state":  "open",
+				"required_finish_state": "closed",
+				"timeout":               5,
 			},
 		},
 	},
@@ -64,6 +66,7 @@ var (
 )
 
 func Test_NewClient(t *testing.T) {
+	// test with sample config defined above
 	httpgdo, err := NewHttpGdo(sampleYaml)
 	assert.Equal(t, nil, err)
 	if err != nil {
@@ -77,7 +80,38 @@ func Test_NewClient(t *testing.T) {
 		assert.Equal(t, h.Settings.Commands[0].Name, "open")
 		assert.Equal(t, h.Settings.Commands[1].Timeout, 5)
 	} else {
-		t.Error("returned type is not *mqttGdo")
+		t.Error("returned type is not *httpGdo")
+	}
+
+	// test with sample config extracted from example config.yml file
+	util.LoadConfig(filepath.Join("..", "..", "..", "examples", "config.polygon.http.yml"))
+	door := *util.Config.GarageDoors[0]
+	var openerConfig interface{}
+	for k, v := range door {
+		if k == "opener" {
+			openerConfig = v
+		}
+	}
+	if openerConfig == nil {
+		t.Error("unable to parse config from garage door")
+		return
+	}
+	config, ok := openerConfig.(map[string]interface{})
+	if !ok {
+		t.Error("unable to parse config from garage door")
+		return
+	}
+	httpgdo, err = NewHttpGdo(config)
+	assert.Equal(t, nil, err)
+
+	if h, ok := httpgdo.(*httpGdo); ok {
+		assert.Equal(t, h.Settings.Connection.Host, "localhost")
+		assert.Equal(t, h.Settings.Connection.Port, 80)
+		assert.Equal(t, h.Settings.Status.Endpoint, "/status")
+		assert.Equal(t, h.Settings.Commands[0].Name, "open")
+		assert.Equal(t, h.Settings.Commands[1].Timeout, 25)
+	} else {
+		t.Error("returned type is not *httpGdo")
 	}
 }
 

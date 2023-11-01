@@ -60,12 +60,12 @@ type (
 	}
 
 	Command struct {
-		Name               string `yaml:"name"`                 // e.g. `open` or `close`
-		Payload            string `yaml:"payload"`              // this could be the same or different than Name depending on the mqtt implementation
-		TopicSuffix        string `yaml:"topic_suffix"`         // location where the command will be published; prefixed by MqttSettings.Topics.Prefix
-		RequiredStartState string `yaml:"required_start_state"` // if set, garage door will not operate if current state does not equal this
-		RequiredStopState  string `yaml:"required_stop_state"`  // if set, garage door will monitor the door state compared to this value to determine success
-		Timeout            int    `yaml:"timeout"`              // time to wait for garage door to operate if monitored
+		Name                string `yaml:"name"`                  // e.g. `open` or `close`
+		Payload             string `yaml:"payload"`               // this could be the same or different than Name depending on the mqtt implementation
+		TopicSuffix         string `yaml:"topic_suffix"`          // location where the command will be published; prefixed by MqttSettings.Topics.Prefix
+		RequiredStartState  string `yaml:"required_start_state"`  // if set, garage door will not operate if current state does not equal this
+		RequiredFinishState string `yaml:"required_finish_state"` // if set, garage door will monitor the door state compared to this value to determine success
+		Timeout             int    `yaml:"timeout"`               // time to wait for garage door to operate if monitored
 	}
 )
 
@@ -327,13 +327,13 @@ func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 	token := m.MqttClient.Publish(m.Settings.Topics.Prefix+"/"+command.TopicSuffix, 0, false, command.Payload)
 	token.Wait()
 
-	// if a required stop state and status topic are defined, wait for it to be satisfied
-	if command.RequiredStopState != "" && m.Settings.Topics.DoorStatus != "" {
+	// if a required finish state and status topic are defined, wait for it to be satisfied
+	if command.RequiredFinishState != "" && m.Settings.Topics.DoorStatus != "" {
 		// wait for timeout
 		start := time.Now()
 		for time.Since(start) < time.Duration(command.Timeout)*time.Second {
-			if m.State == command.RequiredStopState {
-				logger.Infof("Garage door state has been set successfully: %s", action)
+			if m.State == command.RequiredFinishState {
+				logger.Infof("Garage door state has been set successfully: %s", command.RequiredFinishState)
 				return
 			}
 			logger.Debugf("Current opener state: %s", m.State)
