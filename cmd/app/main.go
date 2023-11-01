@@ -39,9 +39,14 @@ func init() {
 		logger.SetLevel(logger.DebugLevel)
 	}
 	log.SetOutput(os.Stdout)
+
 	parseArgs()
 	util.LoadConfig(configFile)
 	mqttSettings = &util.Config.Global.MqttSettings.Connection
+	if util.Config.Testing {
+		logger.Warn("TESTING=true, will not execute garage door actions")
+	}
+
 	geo.ParseGarageDoorConfig()
 	checkEnvVars()
 	for _, garageDoor := range geo.GarageDoors {
@@ -198,6 +203,9 @@ func main() {
 		case <-signalChannel:
 			logger.Info("Received interrupt signal, shutting down...")
 			client.Disconnect(250)
+			for _, g := range geo.GarageDoors {
+				g.Opener.ProcessShutdown()
+			}
 			time.Sleep(250 * time.Millisecond)
 			return
 

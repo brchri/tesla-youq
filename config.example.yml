@@ -123,3 +123,40 @@ garage_doors:
             required_stop_state: closed
     cars:
       - teslamate_car_id: 4 # id used for the third vehicle in TeslaMate's MQTT broker
+
+  - # example with http opener type
+    circular_geofence:
+      center:
+        lat: 46.19290425661381
+        lng: -123.79965087116439
+      close_distance: .013
+      open_distance: .04
+    opener:
+      type: http
+      settings:
+        connection:
+          host: localhost
+          port: 80 
+          use_tls: false
+          skip_tls_verify: false
+          username: user
+          password: pass
+        status:
+            endpoint: /status # optional, GET endpoint to retrieve current door status; expects simple return values like `open` or `closed`
+        commands:
+          # /command endpoint with a body to indicate the command type
+          - name: open
+            endpoint: /command
+            http_method: post
+            body: { "command": "open" }
+            required_start_state: closed
+            required_stop_state: open
+          # /close endpoint with no body required, as the endpoint /close defines the type
+          - name: close
+            endpoint: /close
+            http_method: post
+            body: 
+            required_start_state: open
+            required_stop_state: closed
+    cars:
+      - teslamate_car_id: 5

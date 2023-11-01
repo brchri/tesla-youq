@@ -28,11 +28,13 @@ type (
 		processMqttMessage(mqtt.Client, mqtt.Message)
 		// SetGarageDoor operates the garage door by publishing to the configured mqtt topic with the configured payload
 		SetGarageDoor(string) error
+		// process any required shutdown events, such as service disconnects
+		ProcessShutdown()
 	}
 
 	// mqttGdo is the struct that implements the MqttGdo interface
 	mqttGdo struct {
-		MqttSettings struct {
+		Settings struct {
 			Connection struct {
 				Host          string `yaml:"host"`
 				Port          int    `yaml:"port"`
@@ -49,7 +51,7 @@ type (
 				Availability string `yaml:"availability"`
 			} `yaml:"topics"`
 			Commands []Command `yaml:"commands"`
-		} `yaml:"mqtt_settings"`
+		} `yaml:"settings"`
 		OpenerType   string      `yaml:"type"` // name used by this module can be overridden by consuming modules, such as ratgdo, which is a wrapper for this package
 		MqttClient   mqtt.Client // client that manages the connections and subscriptions to the mqtt broker
 		State        string      // state of the garage door
@@ -69,7 +71,7 @@ type (
 
 const (
 	defaultModuleName = "Generic MQTT Opener"
-	defaultMattPort   = 1883
+	defaultMqttPort   = 1883
 )
 
 var mqttNewClientFunc = mqtt.NewClient // abstract NewClient function call to allow mocking
@@ -110,7 +112,7 @@ func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
 	}
 
 	// check if garage door opener is connecting to the same mqtt broker as the global for teslamate, and if so, that they have unique clientIDs
-	localMqtt := &mqttGdo.MqttSettings.Connection
+	localMqtt := &mqttGdo.Settings.Connection
 	globalMqtt := util.Config.Global.MqttSettings.Connection
 	if localMqtt.ClientID != "" && localMqtt.ClientID == globalMqtt.ClientID && localMqtt.Host == globalMqtt.Host && localMqtt.Port == globalMqtt.Port {
 		localMqtt.ClientID = localMqtt.ClientID + "-" + mqttGdo.OpenerType + "-" + uuid.NewString()
@@ -118,13 +120,13 @@ func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
 	}
 
 	// set command timeouts if not defined
-	for k, v := range mqttGdo.MqttSettings.Commands {
+	for k, v := range mqttGdo.Settings.Commands {
 		if v.Timeout == 0 {
-			mqttGdo.MqttSettings.Commands[k].Timeout = 30
+			mqttGdo.Settings.Commands[k].Timeout = 30
 		}
 	}
 
-	mqttGdo.MqttSettings.Topics.Prefix = strings.TrimRight(mqttGdo.MqttSettings.Topics.Prefix, "/") // trim any trailing `/` on the prefix topic
+	mqttGdo.Settings.Topics.Prefix = strings.TrimRight(mqttGdo.Settings.Topics.Prefix, "/") // trim any trailing `/` on the prefix topic
 	return mqttGdo, mqttGdo.ValidateMinimumMqttSettings()
 }
 
@@ -138,13 +140,13 @@ func NewMqttGdo(config map[string]interface{}) (MqttGdo, error) {
 // host, commands[*].{Name,Payload,TopicSuffix}
 func (m *mqttGdo) ValidateMinimumMqttSettings() error {
 	var errors []string
-	if m.MqttSettings.Connection.Host == "" {
+	if m.Settings.Connection.Host == "" {
 		errors = append(errors, "missing mqtt host setting")
 	}
-	if len(m.MqttSettings.Commands) == 0 {
+	if len(m.Settings.Commands) == 0 {
 		errors = append(errors, "at least 1 command required to operate garage")
 	}
-	for i, c := range m.MqttSettings.Commands {
+	for i, c := range m.Settings.Commands {
 		commandErrorFormat := "missing %s for command %d"
 		if c.Name == "" {
 			errors = append(errors, fmt.Sprintf(commandErrorFormat, "command name", i))
@@ -158,9 +160,9 @@ func (m *mqttGdo) ValidateMinimumMqttSettings() error {
 	}
 
 	// set defaults if omitted from config
-	if m.MqttSettings.Connection.Port == 0 {
-		logger.Debugf("Port is undefined for %s, using default port %d", m.OpenerType, defaultMattPort)
-		m.MqttSettings.Connection.Port = defaultMattPort
+	if m.Settings.Connection.Port == 0 {
+		logger.Debugf("Port is undefined for %s, using default port %d", m.OpenerType, defaultMqttPort)
+		m.Settings.Connection.Port = defaultMqttPort
 	}
 
 	if len(errors) > 0 {
@@ -183,24 +185,24 @@ func (m *mqttGdo) InitializeMqttClient() {
 	opts.SetPingTimeout(10 * time.Second)
 	logger.Debug(" AutoReconnect: true")
 	opts.SetAutoReconnect(true)
-	if m.MqttSettings.Connection.User != "" {
+	if m.Settings.Connection.User != "" {
 		logger.Debug(" Username: true <redacted value>")
 	} else {
 		logger.Debug(" Username: false (not set)")
 	}
-	opts.SetUsername(m.MqttSettings.Connection.User) // if not defined, will just set empty strings and won't be used by pkg
-	if m.MqttSettings.Connection.Pass != "" {
+	opts.SetUsername(m.Settings.Connection.User) // if not defined, will just set empty strings and won't be used by pkg
+	if m.Settings.Connection.Pass != "" {
 		logger.Debug(" Password: true <redacted value>")
 	} else {
 		logger.Debug(" Password: false (not set)")
 	}
-	opts.SetPassword(m.MqttSettings.Connection.Pass) // if not defined, will just set empty strings and won't be used by pkg
+	opts.SetPassword(m.Settings.Connection.Pass) // if not defined, will just set empty strings and won't be used by pkg
 	opts.OnConnect = m.onMqttConnect
 
 	// set conditional MQTT client opts
-	if m.MqttSettings.Connection.ClientID != "" {
-		logger.Debugf(" ClientID: %s", m.MqttSettings.Connection.ClientID)
-		opts.SetClientID(m.MqttSettings.Connection.ClientID)
+	if m.Settings.Connection.ClientID != "" {
+		logger.Debugf(" ClientID: %s", m.Settings.Connection.ClientID)
+		opts.SetClientID(m.Settings.Connection.ClientID)
 	} else {
 		// generate UUID for mqtt client connection if not specified in config file
 		id := uuid.New().String()
@@ -209,17 +211,17 @@ func (m *mqttGdo) InitializeMqttClient() {
 	}
 	logger.Debug(" Protocol: TCP")
 	mqttProtocol := "tcp"
-	if m.MqttSettings.Connection.UseTls {
+	if m.Settings.Connection.UseTls {
 		logger.Debug(" UseTLS: true")
-		logger.Debugf(" SkipTLSVerify: %t", m.MqttSettings.Connection.SkipTlsVerify)
+		logger.Debugf(" SkipTLSVerify: %t", m.Settings.Connection.SkipTlsVerify)
 		opts.SetTLSConfig(&tls.Config{
-			InsecureSkipVerify: m.MqttSettings.Connection.SkipTlsVerify,
+			InsecureSkipVerify: m.Settings.Connection.SkipTlsVerify,
 		})
 		mqttProtocol = "ssl"
 	} else {
 		logger.Debug(" UseTLS: false")
 	}
-	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, m.MqttSettings.Connection.Host, m.MqttSettings.Connection.Port)
+	broker := fmt.Sprintf("%s://%s:%d", mqttProtocol, m.Settings.Connection.Host, m.Settings.Connection.Port)
 	logger.Debugf(" Broker: %s", broker)
 	opts.AddBroker(broker)
 
@@ -240,9 +242,9 @@ func (m *mqttGdo) InitializeMqttClient() {
 // subscribes to topics if relevant
 func (m *mqttGdo) onMqttConnect(client mqtt.Client) {
 	topicSuffixes := []string{
-		m.MqttSettings.Topics.Obstruction,
-		m.MqttSettings.Topics.Availability,
-		m.MqttSettings.Topics.DoorStatus,
+		m.Settings.Topics.Obstruction,
+		m.Settings.Topics.Availability,
+		m.Settings.Topics.DoorStatus,
 	}
 
 	for _, t := range topicSuffixes {
@@ -251,7 +253,7 @@ func (m *mqttGdo) onMqttConnect(client mqtt.Client) {
 			continue
 		}
 
-		fullTopic := m.MqttSettings.Topics.Prefix + "/" + t
+		fullTopic := m.Settings.Topics.Prefix + "/" + t
 		logger.Debugf("Subscribing to MqttGdo MQTT topic %s", fullTopic)
 		topicSubscribed := false
 		// retry topic subscription attempts with 1 sec delay between attempts
@@ -280,12 +282,12 @@ func (m *mqttGdo) onMqttConnect(client mqtt.Client) {
 // sets mqttGdo properties based on payloads
 func (m *mqttGdo) processMqttMessage(client mqtt.Client, message mqtt.Message) {
 	// update MqttGdo property based on topic suffix (strip shared prefix on the switch)
-	switch strings.TrimPrefix(message.Topic(), m.MqttSettings.Topics.Prefix+"/") {
-	case m.MqttSettings.Topics.DoorStatus:
+	switch strings.TrimPrefix(message.Topic(), m.Settings.Topics.Prefix+"/") {
+	case m.Settings.Topics.DoorStatus:
 		m.State = string(message.Payload())
-	case m.MqttSettings.Topics.Availability:
+	case m.Settings.Topics.Availability:
 		m.Availability = string(message.Payload())
-	case m.MqttSettings.Topics.Obstruction:
+	case m.Settings.Topics.Obstruction:
 		m.Obstruction = string(message.Payload())
 	default:
 		logger.Debugf("invalid message topic: %s", message.Topic())
@@ -297,7 +299,7 @@ func (m *mqttGdo) processMqttMessage(client mqtt.Client, message mqtt.Message) {
 // if configured, will monitor door status to confirm successful operation
 func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 	var command Command
-	for _, v := range m.MqttSettings.Commands {
+	for _, v := range m.Settings.Commands {
 		if action == v.Name {
 			command = v
 			break
@@ -309,7 +311,7 @@ func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 	}
 
 	// if status topic and required state are defined, check that the required state is satisfied
-	if m.MqttSettings.Topics.DoorStatus != "" && command.RequiredStartState != "" && m.State != command.RequiredStartState {
+	if m.Settings.Topics.DoorStatus != "" && command.RequiredStartState != "" && m.State != command.RequiredStartState {
 		logger.Warnf("Action and state mismatch: garage state is not valid for executing requested action; current state: %s; requested action: %s", m.State, action)
 		return
 	}
@@ -322,11 +324,11 @@ func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 	logger.Infof("setting garage door %s", action)
 	logger.Debugf("Reported MqttGdo availability: %s", m.Availability)
 
-	token := m.MqttClient.Publish(m.MqttSettings.Topics.Prefix+"/"+command.TopicSuffix, 0, false, command.Payload)
+	token := m.MqttClient.Publish(m.Settings.Topics.Prefix+"/"+command.TopicSuffix, 0, false, command.Payload)
 	token.Wait()
 
 	// if a required stop state and status topic are defined, wait for it to be satisfied
-	if command.RequiredStopState != "" && m.MqttSettings.Topics.DoorStatus != "" {
+	if command.RequiredStopState != "" && m.Settings.Topics.DoorStatus != "" {
 		// wait for timeout
 		start := time.Now()
 		for time.Since(start) < time.Duration(command.Timeout)*time.Second {
@@ -339,9 +341,9 @@ func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 		}
 
 		// these are based on ratgdo implementation, should probably make them configurable as other implementations may not use the same statuses
-		if m.MqttSettings.Topics.Availability != "" && m.Availability == "offline" {
+		if m.Settings.Topics.Availability != "" && m.Availability == "offline" {
 			err = fmt.Errorf("unable to %s garage door, possible reason: mqttGdo availability reporting offline", action)
-		} else if m.MqttSettings.Topics.Obstruction != "" && m.Obstruction == "obstructed" {
+		} else if m.Settings.Topics.Obstruction != "" && m.Obstruction == "obstructed" {
 			err = fmt.Errorf("unable to %s garage door, possible reason: mqttGdo obstruction reported", action)
 		} else {
 			err = fmt.Errorf("unable to %s garage door, possible reason: unknown; current state: %s", action, m.State)
@@ -351,4 +353,8 @@ func (m *mqttGdo) SetGarageDoor(action string) (err error) {
 	}
 
 	return
+}
+
+func (m *mqttGdo) ProcessShutdown() {
+	m.MqttClient.Disconnect(250)
 }

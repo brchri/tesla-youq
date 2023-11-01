@@ -48,7 +48,8 @@ func NewRatgdo(config map[string]interface{}) (mqttGdo.MqttGdo, error) {
 	}
 
 	// add ratgdo-specific mqtt settings to the config object
-	if mqttSettings, ok := config["mqtt_settings"].(map[string]interface{}); ok {
+	config["settings"] = config["mqtt_settings"] // mqtt expects just `settings` key
+	if mqttSettings, ok := config["settings"].(map[string]interface{}); ok {
 		mqttSettings["topics"] = map[string]string{
 			"prefix":       ratgdo.MqttSettings.TopicPrefix,
 			"door_status":  "status/door",

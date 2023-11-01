@@ -17,6 +17,38 @@ func (_m *GDO) EXPECT() *GDO_Expecter {
 	return &GDO_Expecter{mock: &_m.Mock}
 }
 
+// ProcessShutdown provides a mock function with given fields:
+func (_m *GDO) ProcessShutdown() {
+	_m.Called()
+}
+
+// GDO_ProcessShutdown_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProcessShutdown'
+type GDO_ProcessShutdown_Call struct {
+	*mock.Call
+}
+
+// ProcessShutdown is a helper method to define mock.On call
+func (_e *GDO_Expecter) ProcessShutdown() *GDO_ProcessShutdown_Call {
+	return &GDO_ProcessShutdown_Call{Call: _e.mock.On("ProcessShutdown")}
+}
+
+func (_c *GDO_ProcessShutdown_Call) Run(run func()) *GDO_ProcessShutdown_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *GDO_ProcessShutdown_Call) Return() *GDO_ProcessShutdown_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *GDO_ProcessShutdown_Call) RunAndReturn(run func()) *GDO_ProcessShutdown_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetGarageDoor provides a mock function with given fields: action
 func (_m *GDO) SetGarageDoor(action string) error {
 	ret := _m.Called(action)
