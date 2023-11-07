@@ -119,6 +119,23 @@ func Test_CheckCircularGeofence_Leaving(t *testing.T) {
 	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
 }
 
+// if close is not defined, should not trigger any action
+func Test_CheckCircularGeofence_Leaving_NoClose(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	distanceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
+
+	prevCloseDistance := distanceCar.GarageDoor.CircularGeofence.CloseDistance
+	distanceCar.GarageDoor.CircularGeofence.CloseDistance = 0
+
+	distanceCar.CurDistance = 0
+	distanceCar.CurrentLocation.Lat = distanceGarageDoor.CircularGeofence.Center.Lat + 10
+	distanceCar.CurrentLocation.Lng = distanceGarageDoor.CircularGeofence.Center.Lng
+
+	assert.Equal(t, checkGeofenceWrapper(distanceCar), true)
+	distanceCar.GarageDoor.CircularGeofence.CloseDistance = prevCloseDistance // restore settings
+}
+
 func Test_CheckCircularGeofence_Arriving(t *testing.T) {
 	mockGdo := &mocks.GDO{}
 	distanceCar.GarageDoor.Opener = mockGdo
@@ -199,6 +216,21 @@ func Test_CheckTeslamateGeofence_Leaving(t *testing.T) {
 	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
 }
 
+func Test_CheckTeslamateGeofence_Leaving_NoClose(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	geofenceCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
+
+	prevGeofenceClose := geofenceCar.GarageDoor.TeslamateGeofence.Close
+	geofenceCar.GarageDoor.TeslamateGeofence.Close = TeslamateGeofenceTrigger{}
+
+	geofenceCar.PrevGeofence = "home"
+	geofenceCar.CurGeofence = "not_home"
+
+	assert.Equal(t, checkGeofenceWrapper(geofenceCar), true)
+	geofenceCar.GarageDoor.TeslamateGeofence.Close = prevGeofenceClose // restore settings
+}
+
 func Test_CheckTeslamateGeofence_Arriving(t *testing.T) {
 	mockGdo := &mocks.GDO{}
 	geofenceCar.GarageDoor.Opener = mockGdo
@@ -243,6 +275,24 @@ func Test_CheckPolyGeofence_Arriving(t *testing.T) {
 	polygonCar.CurrentLocation.Lng = -123.80103692981524
 
 	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
+}
+
+// if close is not defined, should not trigger any action
+func Test_CheckPolyGeofence_Leaving_NoClose(t *testing.T) {
+	mockGdo := &mocks.GDO{}
+	polygonCar.GarageDoor.Opener = mockGdo
+	defer mockGdo.AssertExpectations(t)
+
+	prevCloseGeofence := polygonCar.GarageDoor.PolygonGeofence.Close
+	polygonCar.GarageDoor.PolygonGeofence.Close = []Point{}
+
+	polygonCar.InsidePolyCloseGeo = true
+	polygonCar.InsidePolyOpenGeo = true
+	polygonCar.CurrentLocation.Lat = 46.19243683948096
+	polygonCar.CurrentLocation.Lng = -123.80103692981524
+
+	assert.Equal(t, checkGeofenceWrapper(polygonCar), true)
+	polygonCar.GarageDoor.PolygonGeofence.Close = prevCloseGeofence // restore settings
 }
 
 // runs CheckGeofence and waits for the internal goroutine to complete, signified by the release of oplock,
