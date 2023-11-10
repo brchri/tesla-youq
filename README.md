@@ -1,9 +1,8 @@
+# New Project
+Due to the deprecation of MyQ (see [Notice of Deprecation](#notice-of-deprecation) below), this project has been forked to the new app, [Tesla-GeoGDO](https://github.com/brchri/tesla-geogdo). This new project continues the work of automatically controlling smart garage door openers based on the location of Tesla vehicles. It deprecates MyQ support and adds support for other smart garage door openers, such as [ratgdo](https://paulwieland.github.io/ratgdo/) and MQTT/HTTP-controlled openers, with a refactored codebase to make it easier to add support for additional opener types in the future (such as [Meross](https://www.meross.com/en-gc/smart-garage-door-opener/garage-door-opener-remote-control/29)).
+
 # Notice of Deprecation
-MyQ has, unfortunately, amped up their efforts to restrict 3rd party integration access to their APIs. Because of this, Tesla-YouQ, along with other 3rd party integrations for MyQ such as Home Assistant and Homekit, will no longer function. As such, this app will no longer be developed.
-
-However, work is currently underway to fork this repo to allow automatic control of other smart garage door openers (such as [ratgdo](https://paulwieland.github.io/ratgdo/), [Meross](https://www.meross.com/en-gc/smart-garage-door-opener/garage-door-opener-remote-control/29), or generic MQTT controlled openers) based on geofence event changes in a Tesla. If MyQ relents and allows 3rd party access to their APIs again, support for it will be re-introduced to the forked repo at that time.
-
-More information will be provided in the coming weeks.
+MyQ has, unfortunately, amped up their efforts to [restrict 3rd party integration access to their APIs](https://chamberlaingroup.com/press/a-message-about-our-decision-to-prevent-unauthorized-usage-of-myq). Because of this, Tesla-YouQ, along with other 3rd party integrations for MyQ such as Home Assistant and Homekit, will no longer function. As such, this app will no longer be developed.
 
 # Tesla-YouQ
 A lightweight app that will operate your MyQ connected garage doors based on the location of your Tesla vehicles, automatically closing when you leave, and opening when you return. Supports multiple vehicles and MyQ devices.
